@@ -27,7 +27,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Install Dependencies
         run: npm install
@@ -51,10 +51,10 @@ jobs:
             --source "dist/tenants/${{ inputs.tenant }}" \
             --overwrite true
 
-      - name: Purge Tenant CDN Endpoint
-        run: |
-          az cdn endpoint purge \
-            --resource-group "${{ secrets.CDN_RESOURCE_GROUP }}" \
-            --profile-name "${{ secrets.CDN_PROFILE_NAME }}" \
-            --name "${{ secrets.CDN_ENDPOINT_NAME }}" \
-            --content-paths '/*'
+      # - name: Purge Tenant CDN Endpoint
+      #   run: |
+      #     az cdn endpoint purge \
+      #       --resource-group "${{ secrets.CDN_RESOURCE_GROUP }}" \
+      #       --profile-name "${{ secrets.CDN_PROFILE_NAME }}" \
+      #       --name "${{ secrets.CDN_ENDPOINT_NAME }}" \
+      #       --content-paths '/*'

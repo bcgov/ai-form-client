@@ -18,6 +18,7 @@ on:
 jobs:
   deploy-water:
     uses: ./.github/workflows/deploy-tenant-reusable.yml
+    secrets: inherit
     with:
       tenant: water
       deployment_environment: ${{ github.ref_name == 'main' && 'prod' || github.ref_name }}

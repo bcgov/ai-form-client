@@ -18,6 +18,7 @@ on:
 jobs:
   deploy-fish:
     uses: ./.github/workflows/deploy-tenant-reusable.yml
+    secrets: inherit
     with:
       tenant: fish
       deployment_environment: ${{ github.ref_name == 'main' && 'prod' || github.ref_name }}

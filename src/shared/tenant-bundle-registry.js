@@ -1,3 +1,9 @@
+/**
+ * This module provides functions to register and retrieve tenant-specific bundles.
+ * It maintains a global registry of tenant bundles and dispatches a custom event
+ * when a tenant bundle is ready.
+ */
+
 const REGISTRY_KEY = 'AIFormTenantBundles';
 
 export function registerTenantBundle(tenantName, bundleApi) {
