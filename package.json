@@ -1,0 +1,14 @@
+{
+  "name": "ai-form-client",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build:tenant": "node ./scripts/build-tenant.mjs",
+    "build:water": "node ./scripts/build-tenant.mjs --tenant water",
+    "build:fish": "node ./scripts/build-tenant.mjs --tenant fish"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.5"
+  }
+}

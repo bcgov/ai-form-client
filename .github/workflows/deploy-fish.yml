@@ -1,0 +1,23 @@
+name: Deploy Fish Tenant
+
+on:
+  push:
+    branches:
+      - dev
+      - test
+      - main
+    paths:
+      - 'src/tenant/fish/**'
+      - 'src/shared/app-shell.js'
+      - 'src/index.js'
+      - 'scripts/build-tenant.mjs'
+      - 'package.json'
+      - '.github/workflows/deploy-tenant-reusable.yml'
+      - '.github/workflows/deploy-fish.yml'
+
+jobs:
+  deploy-fish:
+    uses: ./.github/workflows/deploy-tenant-reusable.yml
+    with:
+      tenant: fish
+      deployment_environment: ${{ github.ref_name == 'main' && 'prod' || github.ref_name }}

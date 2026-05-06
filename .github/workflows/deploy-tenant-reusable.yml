@@ -1,0 +1,60 @@
+name: Deploy Tenant Reusable
+
+on:
+  workflow_call:
+    inputs:
+      tenant:
+        description: Tenant key (for build output folder)
+        required: true
+        type: string
+      deployment_environment:
+        description: Shared GitHub environment name (dev, test, prod)
+        required: true
+        type: string
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.deployment_environment }}
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build Tenant Bundle
+        run: npm run build:tenant -- --tenant ${{ inputs.tenant }}
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Upload Tenant Static Files
+        run: |
+          az storage blob upload-batch \
+            --auth-mode login \
+            --account-name "${{ secrets.STORAGE_ACCOUNT_NAME }}" \
+            --destination '$web/scripts/tenants/${{ inputs.tenant }}' \
+            --source "dist/tenants/${{ inputs.tenant }}" \
+            --overwrite true
+
+      - name: Purge Tenant CDN Endpoint
+        run: |
+          az cdn endpoint purge \
+            --resource-group "${{ secrets.CDN_RESOURCE_GROUP }}" \
+            --profile-name "${{ secrets.CDN_PROFILE_NAME }}" \
+            --name "${{ secrets.CDN_ENDPOINT_NAME }}" \
+            --content-paths '/*'
