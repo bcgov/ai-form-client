@@ -52,7 +52,7 @@ jobs:
             --overwrite true
 
       - name: Upload Tenant Assets
-        if: hashFiles('src/tenant/${{ inputs.tenant }}/assets/*') != ''
+        if: ${{ hashFiles('src/tenant/${{ inputs.tenant }}/assets/*') != '' }}
         run: |
           az storage blob upload-batch \
             --auth-mode login \
