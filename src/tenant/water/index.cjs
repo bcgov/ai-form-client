@@ -18,7 +18,7 @@ registerTenantBundle(
         };
       },
       getTenantDisplayName() {
-        console.log('New Water Tenant');
+        console.log('Newwwww Water Tenant stuff');
         return 'New-Water Tenant';
       },
       getFormSteps() {

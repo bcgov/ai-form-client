@@ -82,7 +82,7 @@ const result = await build({
   // sourcemap: false,
   sourcemap: true,
   outdir: outDir,
-  entryNames: 'app.[hash]',
+  entryNames: 'client',
   metafile: true,
   define: {
     __TENANT__: JSON.stringify(tenant)

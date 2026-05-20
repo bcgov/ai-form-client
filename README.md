@@ -1,7 +1,7 @@
 # Tenant-Specific Build And Azure Deployment
 
 This project builds and deploys tenant-specific JavaScript bundles to separate Azure Storage/CDN targets.
-Each build emits a static hashed file that can be loaded by a remote app through a CDN script tag.
+Each build emits a static client.js file that can be loaded by a remote app through a CDN script tag.
 
 ## Module Import Pattern
 
@@ -34,7 +34,7 @@ Each tenant bundle registers itself in `window.AIFormTenantBundles` so remote ap
 After deployment, a remote app can use:
 
 ```html
-<script src="https://cdn.example.com/tenants/water/app.53fd12.js"></script>
+<script src="https://cdn.example.com/tenants/water/client.js"></script>
 <script>
   const waterBundle = window.AIFormTenantBundles.water;
   const initialized = waterBundle.init({ locale: 'en-CA' });
@@ -42,15 +42,15 @@ After deployment, a remote app can use:
 </script>
 ```
 
-Each tenant output also includes a manifest file with the current hashed filename:
+Each tenant output also includes a manifest file:
 
 ```js
 // dist/tenants/water/manifest.json
 {
   "tenant": "water",
-  "file": "app.53fd12.js",
-  "cdnPath": "tenants/water/app.53fd12.js",
-  "scriptTagExample": "<script src=\"https://cdn.example.com/tenants/water/app.53fd12.js\"></script>"
+  "file": "client.js",
+  "cdnPath": "tenants/water/client.js",
+  "scriptTagExample": "<script src=\"https://cdn.example.com/tenants/water/client.js\"></script>"
 }
 ```
 
@@ -71,8 +71,8 @@ npm run build:fish
 
 Output bundles:
 
-- `dist/tenants/water/app.<hash>.js`
-- `dist/tenants/fish/app.<hash>.js`
+- `dist/tenants/water/client.js`
+- `dist/tenants/fish/client.js`
 - `dist/tenants/<tenant>/manifest.json`
 
 ## GitHub Actions
