@@ -1,9 +1,14 @@
-import { createSharedTenantBundle } from '../../shared/index.js';
-import { registerTenantBundle } from '../../shared/tenant-bundle-registry.js';
+// Water-specific method overrides.
+function getTenantDisplayName() {
+  console.log('override water display name');
+}
 
-registerTenantBundle(
-	'fish',
-	createSharedTenantBundle({
-		tenant: 'fish'
-	})
-);
+// new method only for water tenant bundle
+function newFishMethod() {
+  console.log('new fish method');
+}
+
+
+console.log('only shown for fish tenant');
+getTenantDisplayName();
+newFishMethod();

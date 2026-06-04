@@ -1,27 +1,18 @@
-import { createSharedTenantBundle } from '../../shared/index.js';
-import { registerTenantBundle } from '../../shared/tenant-bundle-registry.js';
-// import { FormSteps } from './step-mapper.js';
+// Water-specific method overrides.
+function getTenantDisplayName() {
+  console.log('override water display name');
+}
 
-registerTenantBundle(
-  'water',
-  createSharedTenantBundle({
-    tenant: 'water',
-    overrides: waterOverrides
-  })
-);
-
-const waterOverrides = {
-
-  
-  // Water-specific method overrides.
-  getTenantDisplayName() {
-    console.log('Newwwww Water Tenant stuff');
-    return 'New-Water Tenant';
-  },
-
-  testWater() {
-    console.log('water method');
-  }
-};
+// new method only for water tenant bundle
+function newWaterMethod() {
+  console.log('new water method');
+}
 
 
+console.log('only shown for water tenant');
+getTenantDisplayName();
+newWaterMethod();
+
+import { showStepMap } from './step-mapper.js';
+
+showStepMap();

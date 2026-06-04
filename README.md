@@ -7,41 +7,9 @@ Each build:
 
 ## Javascript bundling
 
-### Module Import Pattern
+The tenant build uses `esbuild` to bundle shared application code from `src/shared/index.js` together with tenant-specific overrides and additions in `src/tenant/<tenant>/index.js`.
 
-- Tenant entrypoints, eg:
-  - `src/tenant/water/index.js`
-  - `src/tenant/fish/index.js`
-- Shared code:
-  - `src/shared/index.js`
-
-Example pattern used:
-
-```js
-import { registerTenantBundle } from '../../shared/tenant-bundle-registry.js';
-
-registerTenantBundle('water', {
-  version: '1.0.0',
-  init(options = {}) {
-    return { tenant: 'water', options };
-  }
-});
-```
-
-Each tenant bundle registers itself in `window.AIFormTenantBundles` so remote apps can read and initialize it after loading the script.
-
-### CDN Script Usage
-
-After deployment, a remote app can use:
-
-```html
-<script src="https://cdn.example.com/scripts/tenants/fish/client.js"></script>
-<script>
-  const waterBundle = window.AIFormTenantBundles.water;
-  const initialized = waterBundle.init({ locale: 'en-CA' });
-  console.log(initialized);
-</script>
-```
+The build script creates a temporary module entrypoint that sets `globalThis.tenant`, imports the shared code, then imports the tenant-specific entrypoint. This produces a single bundled output file per tenant.
 
 ### Build Commands
 
@@ -51,10 +19,16 @@ Install dependencies:
 npm install
 ```
 
+Build all tenants:
+
+```bash
+npm run build:tenant
+```
+
 Build one tenant at a time:
 
 ```bash
-npm run build:<tenant>
+npm run build:tenant:<tenant>
 ```
 
 Output bundles:
