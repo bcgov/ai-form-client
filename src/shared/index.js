@@ -10,13 +10,7 @@ export function createSharedTenantBundle({ tenant, overrides = {} } = {}) {
       return `${tenant.charAt(0).toUpperCase()}${tenant.slice(1)} Tenant`;
     },
 
-    init(options = {}) {
-      return {
-        tenant,
-        initializedAt: new Date().toISOString(),
-        options
-      };
-    }
+
   };
 
   return {

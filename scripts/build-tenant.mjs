@@ -10,7 +10,8 @@ import { access, mkdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 const KNOWN_TENANTS = new Set(['water', 'fish']);
-const ENTRY_FILE_CANDIDATES = ['index.cjs', 'index.js'];
+// Only consider ECMAScript module entry filenames (do not compile from CommonJS `.cjs`).
+const ENTRY_FILE_CANDIDATES = ['index.mjs', 'index.js'];
 
 async function resolveTenantEntryPoint(tenantName) {
   for (const filename of ENTRY_FILE_CANDIDATES) {
@@ -35,21 +36,10 @@ function getArgValue(flagName) {
   return process.argv[index + 1] ?? null;
 }
 
-function getPositionalTenantArg() {
-  const args = process.argv.slice(2);
-  for (const arg of args) {
-    if (!arg.startsWith('-')) {
-      return arg;
-    }
-  }
-
-  return null;
-}
-
-const tenant = getArgValue('--tenant') ?? getPositionalTenantArg();
+const tenant = getArgValue('--tenant');
 
 if (!tenant) {
-  console.error('Missing --tenant argument. Example: npm run build:tenant -- --tenant water');
+  console.error('Missing tenant argument. Example: npm run build:tenant:water');
   process.exit(1);
 }
 

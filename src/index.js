@@ -21,7 +21,6 @@ if (!tenantBundle) {
 	throw new Error(`Tenant bundle "${tenant}" did not register correctly.`);
 }
 
-const initResult = tenantBundle.init({ source: 'src/index.js' });
 const displayName = tenantBundle.getTenantDisplayName();
 
 console.log('Loaded tenant bundle:', tenantBundle.tenant);

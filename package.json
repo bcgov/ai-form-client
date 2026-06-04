@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "build:tenant": "node ./scripts/build-tenant.mjs",
-    "build:water": "node ./scripts/build-tenant.mjs --tenant water",
-    "build:fish": "node ./scripts/build-tenant.mjs --tenant fish"
+    "build:tenant:water": "node ./scripts/build-tenant.mjs --tenant water",
+    "build:tenant:fish": "node ./scripts/build-tenant.mjs --tenant fish"
   },
   "devDependencies": {
     "esbuild": "^0.25.5"
