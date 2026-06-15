@@ -1,0 +1,136 @@
+{
+  "formName": "Recreational Freshwater Fishing Licence Application",
+  "formDescription": "This form collects the information needed to apply for a BC recreational freshwater fishing licence, including applicant details, residency status, licence duration, fishing region, and any optional Classified Waters Licence or Conservation Surcharge stamps.",
+  "formfields": {
+    "dob": {
+      "type": "date",
+      "id": "dob",
+      "title": "Date of Birth",
+      "description": "The applicant's date of birth, used to determine age-based eligibility (e.g. seniors 65+)",
+      "required": true
+    },
+    "residency": {
+      "type": "radio",
+      "id": "residency",
+      "title": "Residency Status",
+      "description": "Determines the licence fee category for the applicant",
+      "enum": [
+        "BC Resident",
+        "Non-Resident (Canadian)",
+        "Non-Resident Alien (non-Canadian)"
+      ],
+      "default": "BC Resident",
+      "required": true
+    },
+    "wid": {
+      "type": "text",
+      "id": "wid",
+      "title": "Fish and Wildlife ID (WID)",
+      "description": "Existing Fish and Wildlife ID number. Leave blank if the applicant needs to register for a new WID",
+      "required": false
+    },
+    "licenceDuration": {
+      "type": "radio",
+      "id": "licenceDuration",
+      "title": "Licence Duration",
+      "description": "The length of the freshwater fishing licence being applied for",
+      "enum": [
+        "One-Day",
+        "Eight-Day",
+        "Annual (Apr 1 - Mar 31)"
+      ],
+      "default": "One-Day",
+      "required": true
+    },
+    "seniorRate": {
+      "type": "radio",
+      "id": "seniorRate",
+      "title": "Senior Rate (65+)",
+      "description": "Whether the applicant is 65 or older and eligible for the resident senior annual rate",
+      "enum": [
+        "Yes",
+        "No"
+      ],
+      "default": "No",
+      "required": false
+    },
+    "disabilityReduction": {
+      "type": "radio",
+      "id": "disabilityReduction",
+      "title": "Disability Fee Reduction",
+      "description": "Whether the applicant holds a Certificate of Eligibility for the angling licence fee reduction program (severe and permanent disability)",
+      "enum": [
+        "Yes",
+        "No"
+      ],
+      "default": "No",
+      "required": false
+    },
+    "coeNumber": {
+      "type": "text",
+      "id": "coeNumber",
+      "title": "Certificate of Eligibility Number",
+      "description": "Required only if the applicant has indicated they hold a disability fee reduction Certificate of Eligibility",
+      "required": false
+    },
+    "location": {
+      "type": "select",
+      "id": "location",
+      "title": "Location",
+      "description": "Select the region where you plan to fish",
+      "enum": [
+        "Region 1 - Vancouver Island (includes Haida Gwaii: WMU 6-12, 6-13)",
+        "Region 2 - Lower Mainland",
+        "Region 3 - Thompson",
+        "Region 4 - Kootenay",
+        "Region 5 - Cariboo",
+        "Region 6 - Skeena",
+        "Region 7A - Omineca",
+        "Region 7B - Peace",
+        "Region 8 - Okanagan"
+      ],
+      "default": "Region 1 - Vancouver Island (includes Haida Gwaii: WMU 6-12, 6-13)",
+      "required": true
+    },
+    "classifiedWaters": {
+      "type": "radio",
+      "id": "classifiedWaters",
+      "title": "Classified Waters Licence",
+      "description": "Whether the applicant wants to add a Classified Waters Licence for a Class I or Class II water",
+      "enum": [
+        "Yes",
+        "No"
+      ],
+      "default": "No",
+      "required": false
+    },
+    "classifiedWaterName": {
+      "type": "text",
+      "id": "classifiedWaterName",
+      "title": "Classified Water Name / Region",
+      "description": "The name of the Classified Water or region the applicant intends to fish, e.g. Dean River, Skagit River, or a Kootenay region river",
+      "required": false
+    },
+    "surcharge": {
+      "type": "checkbox",
+      "id": "surcharge",
+      "title": "Conservation Surcharge Stamps",
+      "description": "Conservation Surcharge stamps required based on the species the applicant intends to fish for or retain (you can select multiple)",
+      "enum": [
+        "Steelhead",
+        "Non-Tidal Salmon",
+        "Kootenay/Shuswap Rainbow Trout or Char",
+        "White Sturgeon Conservation Licence"
+      ],
+      "required": false
+    },
+    "estimatedCost": {
+      "type": "text",
+      "id": "estimatedCost",
+      "title": "Estimated Licence Cost",
+      "description": "Read-only field showing the calculated total cost of the licence based on residency, licence duration, and any selected surcharges or add-ons",
+      "readonly": true,
+      "required": false
+    }
+  }
+}
