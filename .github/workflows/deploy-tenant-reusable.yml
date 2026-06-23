@@ -51,13 +51,13 @@ jobs:
             --source "dist/tenants/${{ inputs.tenant }}" \
             --overwrite true
 
-      # - name: Upload Tenant Assets
-      #   if: ${{ hashFiles('src/tenant/${{ inputs.tenant }}/assets/*') != '' }}
-      #   run: |
-      #     az storage blob upload-batch \
-      #       --auth-mode login \
-      #       --account-name "${{ secrets.STORAGE_ACCOUNT_NAME }}" \
-      #       --destination 'assets/tenants/${{ inputs.tenant }}' \
-      #       --source "src/tenant/${{ inputs.tenant }}/assets" \
-      #       --overwrite true
+      - name: Upload Tenant Assets
+        if: ${{ hashFiles('src/tenant/${{ inputs.tenant }}/assets/*') != '' }}
+        run: |
+          az storage blob upload-batch \
+            --auth-mode login \
+            --account-name "${{ secrets.STORAGE_ACCOUNT_NAME }}" \
+            --destination 'assets/tenants/${{ inputs.tenant }}' \
+            --source "src/tenant/${{ inputs.tenant }}/assets" \
+            --overwrite true
 
