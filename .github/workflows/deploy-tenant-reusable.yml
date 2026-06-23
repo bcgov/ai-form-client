@@ -51,8 +51,15 @@ jobs:
             --source "dist/tenants/${{ inputs.tenant }}" \
             --overwrite true
 
+      - name: Check for Tenant Asset changes
+        uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            src_files:
+              - 'src/tenant/${{ inputs.tenant }}/assets/*'
       - name: Upload Tenant Assets
-        if: ${{ hashFiles('src/tenant/${{ inputs.tenant }}/assets/*') != '' }}
+        if: steps.changes.outputs.src_files == 'true'
         run: |
           az storage blob upload-batch \
             --auth-mode login \
