@@ -8,7 +8,7 @@ on:
       - main
     paths:
       - 'src/tenant/water/**'
-      - 'src/shared/tenant-bundle-registry.js'
+      - 'src/shared/**'
       - 'src/index.js'
       - 'scripts/build-tenant.mjs'
       - 'package.json'

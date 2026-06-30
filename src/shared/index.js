@@ -15,11 +15,9 @@ import { createGuidedQuestionsRenderer } from './guided-questions/ui/guidedQuest
 
 import { isDevClientInstance } from './clientInstance.js';
 
-// --------- Load alternate dev script source
+// ------------ Load alternate dev script source
 if (!isDevClientInstance()) {
 
-
-  const x = 0;
 
   // ---------------- Default Configuration
   const isAIAssistantEnabled = Boolean(document.querySelector('[ai-mode]'));
