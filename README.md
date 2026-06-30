@@ -1,22 +1,41 @@
-# Tenant-Specific Build And Azure Deployment
+# AI Form Client
 
-This project deploys tenant-specific javascript and assets to separate Azure Storage targets.
-Each build:
--  bundles and uploads a static JavaScript client.js file from shared and tenant-specific sources to the target storage account static website container (`$web`)
--  uploads tenant-specific 'assets' (required for AI Form Assistant)
+A repo for tenant-specific `assets` and `scripts` required to use AI Form-Assist, bundled for each tenant and delivered via Azure CDN.
 
-## Javascript bundling
+## Tenant Scripts
 
-The tenant build uses `esbuild` to bundle shared application code from `src/shared/index.js` together with tenant-specific overrides and additions in `src/tenant/<tenant>/index.js`.
+Each tenant is a government service or ministry with its own form. The build produces one `client.js` per tenant by combining:
 
-The build script creates a temporary module entrypoint that sets `globalThis.tenant`, imports the shared code, then imports the tenant-specific entrypoint. This produces a single bundled output file per tenant.
+- **Shared code** (`src/shared/`) — the chat UI, orchestrator API integration, field-suggestion engine, and ASP.NET postback handling
+- **Tenant code** (`src/tenant/<tenant>/index.js`) — tenant-specific step detection, field mappings, and any overrides to shared behaviour
 
-### Build Commands
+The tenant name is available at runtime as `globalThis.tenant`.
+
+## Tenant assets
+
+In addition to the JavaScript bundle, each tenant provides a set of assets that the AI backend reads at runtime from Azure Storage:
+
+| Path | Purpose |
+|---|---|
+| `assets/agentprompts/` | System and user prompts for each AI agent (aggregator, dispatcher, conversation agent, form support agent) |
+| `assets/formdefinitions/` | JSON files describing each form step — field IDs, types, titles, and descriptions used by the AI to understand the form |
+| `assets/prompttemplates/` | Markdown templates that inject step-specific context into the AI's prompt for each form step |
+
+Assets live in `src/tenant/<tenant>/assets/` and are uploaded separately from the JS bundle to the `assets` Azure Storage container (only reachable by Azure backend services).
+
+## Build
 
 Install dependencies:
 
 ```bash
 npm install
+```
+
+Build a single tenant:
+
+```bash
+# example:
+npm run build:tenant:water
 ```
 
 Build all tenants:
@@ -25,55 +44,35 @@ Build all tenants:
 npm run build:tenant
 ```
 
-Build one tenant at a time:
+Output per tenant:
 
-```bash
-npm run build:tenant:<tenant>
+```
+dist/tenants/<tenant>/client.js
+dist/tenants/<tenant>/manifest.json
 ```
 
-Output bundles:
+## CI/CD
 
-- `dist/tenants/<tenant>/client.js`
-- `dist/tenants/<tenant>/manifest.json`
+Two workflow files exist per tenant — a trigger wrapper and a shared reusable workflow:
 
+- `.github/workflows/deploy-<tenant>.yml` — triggers on pushes to `dev`, `test`, or `main` that touch that tenant's files
+- `.github/workflows/deploy-tenant-reusable.yml` — builds the bundle and syncs both scripts and assets to Azure Storage
 
-## Tennant-specific Assets are uploaded
+Branch-to-environment mapping:
 
-Assets for each tenant in `src/tenant/<tenant>/assets` are uploaded to configured storage container (`Assets`) to location `tenants/<tenant>/<files>`. The This Assets container is only reachable by Azure services within our private subnet.  
+| Branch | GitHub environment | Azure subscription |
+|---|---|---|
+| `dev` | `dev` | dev |
+| `test` | `test` | test |
+| `main` | `prod` | prod |
 
-## GitHub Actions
+Each GitHub environment must have these secrets:
 
-Workflows:
+| Secret | Description |
+|---|---|
+| `AZURE_CLIENT_ID` | App registration client ID |
+| `AZURE_TENANT_ID` | Azure AD tenant ID |
+| `AZURE_SUBSCRIPTION_ID` | Azure subscription ID |
+| `STORAGE_ACCOUNT_NAME` | Target storage account name |
 
-- `.github/workflows/deploy-<tenant>.yml` (trigger wrapper)
-- `.github/workflows/deploy-tenant-reusable.yml` (shared build/deploy implementation)
-
-Trigger behavior:
-
-- Water workflow runs only when `src/tenant/water/**` or shared build files change on `dev`, `test`, or `main`.
-- Fish workflow runs only when `src/tenant/fish/**` or shared build files change on `dev`, `test`, or `main`.
-- Both wrappers call the same reusable workflow via `workflow_call` and pass tenant plus deployment environment values.
-- Branch-to-environment mapping in wrappers:
-  - `dev` branch deploys to `dev`
-  - `test` branch deploys to `test`
-  - `main` branch deploys to `prod`
-
-## Required GitHub Environment Secrets
-
-Create GitHub environments:
-
-- `dev`
-- `test`
-- `prod`
-
-For each environment, set these secrets:
-
-- `AZURE_CLIENT_ID`
-- `AZURE_TENANT_ID`
-- `AZURE_SUBSCRIPTION_ID`
-- `STORAGE_ACCOUNT_NAME`
-
-The workflows use Azure OIDC login (`azure/login@v2`) and then:
-
-1. Uploads tenant build output to the target storage account static website container (`$web`).
-
+The workflows authenticate via Azure OIDC (no stored client secrets). The service principal for each environment needs a federated credential with subject `repo:<org>/ai-form-client:environment:<env>` and the **Storage Blob Data Contributor** role on the storage account.
