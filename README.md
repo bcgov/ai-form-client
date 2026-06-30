@@ -1,6 +1,6 @@
 # Tenant-Specific Build And Azure Deployment
 
-This project deploys tenant-specific assets to separate Azure Storage targets.
+This project deploys tenant-specific javascript and assets to separate Azure Storage targets.
 Each build:
 -  bundles and uploads a static JavaScript client.js file from shared and tenant-specific sources to the target storage account static website container (`$web`)
 -  uploads tenant-specific 'assets' (required for AI Form Assistant)
@@ -60,13 +60,13 @@ Trigger behavior:
 
 ## Required GitHub Environment Secrets
 
-Create shared GitHub environments:
+Create GitHub environments:
 
 - `dev`
 - `test`
 - `prod`
 
-For each shared environment, set these secrets:
+For each environment, set these secrets:
 
 - `AZURE_CLIENT_ID`
 - `AZURE_TENANT_ID`

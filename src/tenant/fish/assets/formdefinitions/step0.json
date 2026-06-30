@@ -74,6 +74,13 @@
             "description": "Select this option if the applicant holds a Certificate of Eligibility for the fee reduction program due to severe and permanent disability.",
             "required": false
         },
+        "coeNumber": {
+            "type": "text",
+            "id": "coeNumber",
+            "title": "Certificate of Eligibility Number",
+            "description": "Applicant's Certificate of Eligibility number. Leave blank if the applicant does not have one.",
+            "required": false
+        },
         "fishing_region": {
             "type": "select",
             "id": "location",
