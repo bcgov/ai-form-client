@@ -44,28 +44,21 @@ jobs:
 
       - name: Upload Tenant Scripts
         run: |
-          az storage blob upload-batch \
+          az storage blob sync \
             --auth-mode login \
             --account-name "${{ secrets.STORAGE_ACCOUNT_NAME }}" \
-            --destination '$web/scripts/tenants/${{ inputs.tenant }}' \
+            --container '$web' \
             --source "dist/tenants/${{ inputs.tenant }}" \
-            --overwrite true
+            --destination "scripts/tenants/${{ inputs.tenant }}" \
+            --delete-destination false
 
-      # - name: Check for Tenant Asset changes
-      #   uses: dorny/paths-filter@v3
-      #   id: changes
-      #   with:
-      #     filters: |
-      #       src_files:
-      #         - 'src/tenant/${{ inputs.tenant }}/assets/**'
       - name: Upload Tenant Assets
-        # if: steps.changes.outputs.src_files == 'true'
-        # if: hashFiles('src/tenant/${{ inputs.tenant }}/assets/**') != ''
         run: |
-          az storage blob upload-batch \
+          az storage blob sync \
             --auth-mode login \
             --account-name "${{ secrets.STORAGE_ACCOUNT_NAME }}" \
-            --destination 'assets/tenants/${{ inputs.tenant }}' \
+            --container 'assets' \
             --source "src/tenant/${{ inputs.tenant }}/assets" \
-            --overwrite true
+            --destination "tenants/${{ inputs.tenant }}" \
+            --delete-destination false
 
