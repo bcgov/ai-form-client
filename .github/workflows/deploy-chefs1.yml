@@ -1,0 +1,24 @@
+name: Deploy CHEFS Demo Tenant
+
+on:
+  push:
+    branches:
+      - dev
+      # - test
+      # - main
+    paths:
+      - 'src/tenant/chefs1/**'
+      - 'src/shared/**'
+      - 'src/index.js'
+      - 'scripts/build-tenant.mjs'
+      - 'package.json'
+      - '.github/workflows/deploy-tenant-reusable.yml'
+      - '.github/workflows/deploy-chefs1.yml'
+
+jobs:
+  deploy-chefs1:
+    uses: ./.github/workflows/deploy-tenant-reusable.yml
+    secrets: inherit
+    with:
+      tenant: chefs1
+      deployment_environment: ${{ github.ref_name == 'main' && 'prod' || github.ref_name }}

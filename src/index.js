@@ -4,7 +4,8 @@ const tenant = document.documentElement.dataset.tenant || window.__TENANT__ || '
 
 const loaders = {
 	water: () => import('./tenant/water/index.cjs'),
-	fish: () => import('./tenant/fish/index.cjs')
+	fish: () => import('./tenant/fish/index.cjs'),
+	chefs1: () => import('./tenant/chefs1/index.cjs')
 };
 
 const loadTenant = loaders[tenant];
