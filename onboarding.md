@@ -8,7 +8,9 @@ Each tenant lives under `src/tenant/<tenant-key>/`:
 
 ```
 src/tenant/<tenant-key>/
-├── client.js                         # Tenant JavaScript entrypoint (required)
+├── scripts/
+│   ├── client.js                     # Tenant JavaScript entrypoint (required)
+│   └── ...                           # Optional supporting modules, imported via relative paths
 └── assets/
     ├── agentprompts/
     │   ├── aggregator/
@@ -30,12 +32,14 @@ The `<tenant-key>` must be lowercase with no spaces (e.g. `water`, `fish`). This
 
 ## 1. Add the tenant JavaScript entrypoint
 
-Create `src/tenant/<tenant-key>/client.js`. This file is uploaded to Azure Storage as-is (no build or bundling step) and loaded on every page of your form, so it must be self-contained.
+Create `src/tenant/<tenant-key>/scripts/client.js`. The whole `scripts/` folder is uploaded to Azure Storage as-is (no build or bundling step), and `client.js` is loaded on every page of your form via `<script type="module">`.
 
 Use it to:
 
 - Detect which form step is active and return a step identifier string
 - Add any tenant-specific logic needed to drive the chat/form-assist experience
+
+If your tenant's logic grows beyond one file, add supporting modules alongside `client.js` inside `scripts/` (e.g. a `guided-questions/` subfolder) and import them with relative paths — the whole folder tree is uploaded together so the imports resolve at runtime. Local-only dev/test files (`*.html`) placed in `scripts/` are excluded from deployment.
 
 The current form step is passed to the orchestrator API on every message. The step identifier must match the keys in your form definitions and prompt templates so the AI backend can load the right context.
 
@@ -122,7 +126,7 @@ jobs:
 
 ## 6. Test locally
 
-There's no build step — `src/tenant/<tenant-key>/client.js` is the exact file that gets uploaded. Load it on your form's dev environment by adding a script tag to the page and an `ai-mode` attribute to any element. Open the browser console to check for errors.
+There's no build step — `src/tenant/<tenant-key>/scripts/` is uploaded exactly as it exists in the repo. Load `client.js` on your form's dev environment by adding a `<script type="module" src="…/client.js">` tag to the page and an `ai-mode` attribute to any element. Open the browser console to check for errors.
 
 ## 7. Deploy
 

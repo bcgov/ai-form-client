@@ -31,15 +31,16 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Upload Tenant Script
+      - name: Upload Tenant Scripts
         run: |
-          az storage blob upload \
+          az storage blob sync \
             --auth-mode login \
             --account-name "${{ secrets.STORAGE_ACCOUNT_NAME }}" \
-            --container-name '$web' \
-            --file "src/tenant/${{ inputs.tenant }}/client.js" \
-            --name "scripts/tenants/${{ inputs.tenant }}/client.js" \
-            --overwrite
+            --container '$web' \
+            --source "src/tenant/${{ inputs.tenant }}/scripts" \
+            --destination "scripts/tenants/${{ inputs.tenant }}" \
+            --exclude-pattern '*.html' \
+            --delete-destination false
 
       - name: Upload Tenant Assets
         run: |
