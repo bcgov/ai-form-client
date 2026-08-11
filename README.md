@@ -1,19 +1,14 @@
 # AI Form Client
 
-A repo for tenant-specific `assets` and `scripts` required to use AI Form-Assist, bundled for each tenant and delivered via Azure CDN.
+A repo for tenant-specific `assets` and `scripts` required to use AI Form-Assist, delivered via Azure CDN.
 
 ## Tenant Scripts
 
-Each tenant is a government service or ministry with its own form. The build produces one `client.js` per tenant by combining:
-
-- **Shared code** (`src/shared/`) — the chat UI, orchestrator API integration, field-suggestion engine, and ASP.NET postback handling
-- **Tenant code** (`src/tenant/<tenant>/index.js`) — tenant-specific step detection, field mappings, and any overrides to shared behaviour
-
-The tenant name is available at runtime as `globalThis.tenant`.
+Each tenant is a government service or ministry with its own form. Each tenant provides its own self-contained `src/tenant/<tenant>/client.js`, which is uploaded to Azure Storage as-is — there is no build or bundling step.
 
 ## Tenant assets
 
-In addition to the JavaScript bundle, each tenant provides a set of assets that the AI backend reads at runtime from Azure Storage:
+In addition to the JavaScript file, each tenant provides a set of assets that the AI backend reads at runtime from Azure Storage:
 
 | Path | Purpose |
 |---|---|
@@ -21,42 +16,14 @@ In addition to the JavaScript bundle, each tenant provides a set of assets that 
 | `assets/formdefinitions/` | JSON files describing each form step — field IDs, types, titles, and descriptions used by the AI to understand the form |
 | `assets/prompttemplates/` | Markdown templates that inject step-specific context into the AI's prompt for each form step |
 
-Assets live in `src/tenant/<tenant>/assets/` and are uploaded separately from the JS bundle to the `assets` Azure Storage container (only reachable by Azure backend services).
-
-## Build
-
-Install dependencies:
-
-```bash
-npm install
-```
-
-Build a single tenant:
-
-```bash
-# example:
-npm run build:tenant:water
-```
-
-Build all tenants:
-
-```bash
-npm run build:tenant
-```
-
-Output per tenant:
-
-```
-dist/tenants/<tenant>/client.js
-dist/tenants/<tenant>/manifest.json
-```
+Assets live in `src/tenant/<tenant>/assets/` and are uploaded separately from `client.js` to the `assets` Azure Storage container (only reachable by Azure backend services).
 
 ## CI/CD
 
 Two workflow files exist per tenant — a trigger wrapper and a shared reusable workflow:
 
 - `.github/workflows/deploy-<tenant>.yml` — triggers on pushes to `dev`, `test`, or `main` that touch that tenant's files
-- `.github/workflows/deploy-tenant-reusable.yml` — builds the bundle and syncs both scripts and assets to Azure Storage
+- `.github/workflows/deploy-tenant-reusable.yml` — uploads that tenant's `client.js` and assets to Azure Storage
 
 Branch-to-environment mapping:
 

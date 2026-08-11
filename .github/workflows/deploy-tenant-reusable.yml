@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       tenant:
-        description: Tenant key (for build output folder)
+        description: Tenant key (matches src/tenant/<tenant> folder name)
         required: true
         type: string
       deployment_environment:
@@ -24,17 +24,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Install Dependencies
-        run: npm install
-
-      - name: Build Tenant Bundle
-        run: npm run build:tenant:${{ inputs.tenant }}
-
       - name: Azure Login (OIDC)
         uses: azure/login@v2
         with:
@@ -42,15 +31,15 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Upload Tenant Scripts
+      - name: Upload Tenant Script
         run: |
-          az storage blob sync \
+          az storage blob upload \
             --auth-mode login \
             --account-name "${{ secrets.STORAGE_ACCOUNT_NAME }}" \
-            --container '$web' \
-            --source "dist/tenants/${{ inputs.tenant }}" \
-            --destination "scripts/tenants/${{ inputs.tenant }}" \
-            --delete-destination false
+            --container-name '$web' \
+            --file "src/tenant/${{ inputs.tenant }}/client.js" \
+            --name "scripts/tenants/${{ inputs.tenant }}/client.js" \
+            --overwrite
 
       - name: Upload Tenant Assets
         run: |

@@ -8,7 +8,7 @@ Each tenant lives under `src/tenant/<tenant-key>/`:
 
 ```
 src/tenant/<tenant-key>/
-├── index.js                          # Tenant JavaScript entrypoint (required)
+├── client.js                         # Tenant JavaScript entrypoint (required)
 └── assets/
     ├── agentprompts/
     │   ├── aggregator/
@@ -26,45 +26,18 @@ src/tenant/<tenant-key>/
         └── step<N>-<StepName>.md     # One file per form step
 ```
 
-The `<tenant-key>` must be lowercase with no spaces (e.g. `water`, `fish`). This key is used in build commands, workflow files, and CDN paths.
+The `<tenant-key>` must be lowercase with no spaces (e.g. `water`, `fish`). This key is used in workflow files and CDN paths.
 
 ## 1. Add the tenant JavaScript entrypoint
 
-Create `src/tenant/<tenant-key>/index.js`. This file is bundled together with `src/shared/index.js` and loaded on every page of your form.
+Create `src/tenant/<tenant-key>/client.js`. This file is uploaded to Azure Storage as-is (no build or bundling step) and loaded on every page of your form, so it must be self-contained.
 
 Use it to:
 
 - Detect which form step is active and return a step identifier string
-- Override the `getCurrentFormStepFromDom` behaviour if your form uses non-standard markup
-- Override shared functions by redeclaring them (tenant code runs after shared code in the bundle)
-- Add any tenant-specific logic that does not belong in the shared client
+- Add any tenant-specific logic needed to drive the chat/form-assist experience
 
 The current form step is passed to the orchestrator API on every message. The step identifier must match the keys in your form definitions and prompt templates so the AI backend can load the right context.
-
-The tenant name is available globally at runtime:
-
-```js
-console.log(globalThis.tenant); // e.g. "water"
-```
-
-### Minimal entrypoint
-
-```js
-// src/tenant/myservice/index.js
-// (empty is valid if the shared step detection works for your form)
-```
-
-### Overriding step detection
-
-If your form uses custom markup for step navigation, export a replacement:
-
-```js
-// src/tenant/myservice/index.js
-function getCurrentFormStepFromDom() {
-  const heading = document.querySelector('h1.step-title');
-  return heading ? heading.dataset.stepId : null;
-}
-```
 
 ## 2. Add form definitions
 
@@ -119,17 +92,7 @@ The AI backend runs multiple agents. Each agent has its own prompt file that sha
 | `agentprompts/aggregator/user.md` | User-turn template passed to the aggregator |
 | `agentprompts/dispatcher/system.md` | Rules for routing queries to the right agent |
 
-## 5. Register the tenant in the build
-
-### Add build scripts to package.json
-
-```json
-"scripts": {
-  "build:tenant:<tenant-key>": "node ./scripts/build-tenant.mjs --tenant <tenant-key>"
-}
-```
-
-### Add a deploy workflow
+## 5. Register the tenant's deploy workflow
 
 Copy an existing deploy workflow and update the tenant key and path filter:
 
@@ -145,10 +108,6 @@ on:
       - main
     paths:
       - 'src/tenant/<tenant-key>/**'
-      - 'src/shared/tenant-bundle-registry.js'
-      - 'src/index.js'
-      - 'scripts/build-tenant.mjs'
-      - 'package.json'
       - '.github/workflows/deploy-tenant-reusable.yml'
       - '.github/workflows/deploy-<tenant-key>.yml'
 
@@ -163,21 +122,7 @@ jobs:
 
 ## 6. Test locally
 
-Build the tenant bundle:
-
-```bash
-npm install
-npm run build:tenant:<tenant-key>
-```
-
-Verify the output:
-
-```
-dist/tenants/<tenant-key>/client.js
-dist/tenants/<tenant-key>/manifest.json
-```
-
-Load `client.js` on your form's dev environment by adding a script tag to the page and an `ai-mode` attribute to any element. Open the browser console to check for errors.
+There's no build step — `src/tenant/<tenant-key>/client.js` is the exact file that gets uploaded. Load it on your form's dev environment by adding a script tag to the page and an `ai-mode` attribute to any element. Open the browser console to check for errors.
 
 ## 7. Deploy
 

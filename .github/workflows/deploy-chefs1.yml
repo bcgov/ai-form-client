@@ -8,10 +8,6 @@ on:
       # - main
     paths:
       - 'src/tenant/chefs1/**'
-      - 'src/shared/**'
-      - 'src/index.js'
-      - 'scripts/build-tenant.mjs'
-      - 'package.json'
       - '.github/workflows/deploy-tenant-reusable.yml'
       - '.github/workflows/deploy-chefs1.yml'
 

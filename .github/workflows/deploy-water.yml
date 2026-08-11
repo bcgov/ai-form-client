@@ -11,10 +11,6 @@ on:
       - other 
     paths:
       - 'src/tenant/water/**'
-      - 'src/shared/**'
-      - 'src/index.js'
-      - 'scripts/build-tenant.mjs'
-      - 'package.json'
       - '.github/workflows/deploy-tenant-reusable.yml'
       - '.github/workflows/deploy-water.yml'
 
