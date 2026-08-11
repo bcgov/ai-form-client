@@ -3,12 +3,9 @@ name: Deploy Water Tenant
 on:
   push:
     branches:
-      # - dev
-      # - test
-      # - main
-      # disabled the pipeline for the water tenant.
-      # while assets (prompt templates) are still being deployed manually via portal.
-      - other 
+      - dev
+      - test
+      - main
     paths:
       - 'src/tenant/water/**'
       - '.github/workflows/deploy-tenant-reusable.yml'
