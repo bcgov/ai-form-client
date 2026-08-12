@@ -1,20 +1,4 @@
 
-
-
-
-//-------------------------- Services Starts ---------------------------//
-// ORCHESTRATOR_API_URL is provided at runtime via `window.AIFAS_CONFIG`, generated
-// from the ORCHESTRATOR_API_URL environment variable and served by the frontend at
-// /aifas-client-scripts/config.js (see frontend/default.conf.template). Include that
-// script BEFORE this one in the host page:
-//   <script src="https://<frontend-host>/aifas-client-scripts/config.js"></script>
-//   <script src="https://<frontend-host>/aifas-client-scripts/client.js"></script>
-// The hardcoded fallback is only used for local `vite` dev, where no config.js is served.
-//
-//   TEST  : https://nraif-671b-test-api.ambitiousmeadow-949bd8c6.canadacentral.azurecontainerapps.io//invoke
-//   DEV   : https://nraif-671b-dev-showcaseapp-api.icymushroom-bc5ec66d.canadacentral.azurecontainerapps.io/invoke
-//   LOCAL : http://localhost:8002/invoke
-
 const ORCHESTRATOR_API_URL = JSON.parse(sessionStorage.getItem('config') || '{}').orchestratorApiUrl ||
   "http://localhost:8002/invoke";
 
