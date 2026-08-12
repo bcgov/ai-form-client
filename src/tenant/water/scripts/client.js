@@ -53,6 +53,14 @@ else if (clientInstance === 'css') {
     document.head.appendChild(script);
 }
 
+else if (clientInstance === 'jatinder') {
+    var url = 'https://jatindersingh93.github.io/nr-ai-form/client-scripts/stepmappers.js' // url to aot's javascript
+    var script = document.createElement("script");
+    script.src = url;
+    script.type = "module";
+    document.head.appendChild(script);
+}
+
 else {
 
     (function () {
@@ -134,7 +142,8 @@ else {
                 client_id: clientId,
                 query,
                 step_number,
-                session_id
+                session_id,
+                application_id: sessionStorage.getItem(APPLICATION_ID_STORAGE_PREFIX),
             };
 
             if (!socket || socket.readyState !== WebSocket.OPEN) {
@@ -210,9 +219,22 @@ else {
         };
         //-------------------------- Steppers Ends ---------------------------//
 
+        function parseApplicationIdFromDOM() {
+          const el = document.querySelector("span.title");
+          if (!el) {
+            console.warn("Application ID not found in the DOM.");
+            // This is not a catastrophic error, so we will return null instead of throwing an error.
+            return null;
+          }
+          // We will retrieve the application ID from the text content of the span.title element, which is expected to be in the format "Water Licence Application (123456)".
+          const match = el.textContent.match(/\((\d+)\)/);
+          return match ? match[1] : null;
+        }
+
         const THREAD_ID_STORAGE_KEY = 'nrAiForm_threadId';
         const CHAT_HISTORY_STORAGE_PREFIX = 'nrAiForm_chatHistory';
         const CHAT_SCROLL_STORAGE_PREFIX = 'nrAiForm_chatScroll';
+        const APPLICATION_ID_STORAGE_PREFIX = 'nrAiForm_applicationId';
 
         function createFallbackThreadId() {
             const randomBytes = new Uint8Array(16);
@@ -245,6 +267,16 @@ else {
             } catch (error) {
                 console.error("Unable to save thread ID to localStorage and sessionStorage:", error);
             }
+        }
+
+        function saveApplicationIdtoSessionStorage() {
+            const applicationIdInDOM = parseApplicationIdFromDOM();
+            const applicationIdInSessionStorage = sessionStorage.getItem(APPLICATION_ID_STORAGE_PREFIX);
+            if (applicationIdInSessionStorage && applicationIdInSessionStorage === applicationIdInDOM) {
+                // If the application ID in sessionStorage matches the one in the DOM, we don't need to set it in the storage again.
+                return;
+            }
+            sessionStorage.setItem(APPLICATION_ID_STORAGE_PREFIX, applicationIdInDOM);
         }
 
         function getHistoryStorageKey(threadId) {
@@ -472,7 +504,7 @@ else {
                 composeemailforsignaturerequest: FormSteps.STEP9_CO_APPLICANT_COMPOSE_EMAIL,
                 complete: FormSteps.STEP10_COMPLETE,
                 pubsubmitteraddress: FormSteps.SHARED_ADDRESS,
-                step9signatures: FormSteps.STEP9_CO_APPLICANT_SIGNATURES,   
+                step9signatures: FormSteps.STEP9_CO_APPLICANT_SIGNATURES,
                 editindividual: FormSteps.STEP7_CO_APPLICANT_ADD_AN_INDIVIDUAL,
                 editorganization: FormSteps.STEP7_CO_APPLICANT_ADD_A_BUSINESS_APPLICANT
             };
@@ -662,6 +694,14 @@ else {
 
         function applySuggestionToElements(suggestion, elements) {
             if (!elements || elements.length === 0) return false;
+
+            // An empty suggestedvalue means "no suggestion" (e.g. an informational/definitional
+            // answer), not "match the option whose value/label is also blank". Without this guard,
+            // normalizeComparableValue('') can accidentally match a radio/select option that happens
+            // to have an empty value or label, silently selecting the wrong option.
+            if (String(suggestion.suggestedvalue ?? '').trim() === '') {
+                return false;
+            }
 
             const expected = normalizeComparableValue(suggestion.suggestedvalue);
             const type = String(suggestion.type || '').toLowerCase();
@@ -1338,6 +1378,11 @@ else {
                 onQuestionClick: handleGuidedQuestionClick
             });
             saveThreadId(sessionId);
+            /** We need to save the application ID to sessionStorage at the time the assistant initializes because, 
+             * application ID is present in the DOM on the main window but absent in popups. 
+             * */
+            saveApplicationIdtoSessionStorage();
+
             const existingHistory = loadChatHistory(sessionId);
             if (existingHistory.length > 0) {
                 renderHistoryEntries(existingHistory, false);
@@ -1700,7 +1745,10 @@ else {
                 if (typeof response === 'string') {
                     return [response];
                 }
-                return [JSON.stringify(response)];
+                // Last resort: the backend should always include an
+                // 'Aggregator'-sourced item, so this should be unreachable in
+                // practice. Never surface the raw response object to the user.
+                return ["Sorry, I wasn't able to process that response. Please try rephrasing your question."];
             }
 
             function appendMessage(role, text, persist = true, scroll = true, options = {}) {
@@ -1850,37 +1898,18 @@ else {
             resumePendingSuggestions();
         }
 
-        function startBot() {
-            if (!sessionStorage.getItem(THREAD_ID_STORAGE_KEY)) {
-            // This is a brand new session; Remove any localStorage items that
-            // might be lingering from a previous session, and start fresh.
-            clearChatStorage();
-          }
-          initBot();
-        }
-
         const isAIAssistantEnabled = Boolean(document.querySelector('[ai-mode]'));
         if (isAIAssistantEnabled) {
-          startBot();
-        } else {
-          const observer = new MutationObserver(() => {
-            if (!document.querySelector('[ai-mode]')) return;
-            clearTimeout(timerId);
-            observer.disconnect();
-            startBot();
-          });
-
-          const timerId = setTimeout(
-            () => observer.disconnect(),
-            10000, // 10 seconds timeout to avoid observing indefinitely if the attribute never appears
-          );
-
-          observer.observe(document.documentElement, {
-            childList: true,
-            subtree: true,
-            attributes: true,
-            attributeFilter: ["ai-mode"],
-          });
+            if (!sessionStorage.getItem(THREAD_ID_STORAGE_KEY)) {
+                // This is a brand new session; Remove any localStorage items that 
+                // might be lingering from a previous session, and start fresh.
+                clearChatStorage();
+            }
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initBot);
+            } else {
+                initBot();
+            }
         }
         // Clears chat-related storage from sessionStorage and localStorage.
         function clearChatStorage() {
@@ -1888,6 +1917,13 @@ else {
             try {
                 localStorage.removeItem(THREAD_ID_STORAGE_KEY);
                 sessionStorage.removeItem(THREAD_ID_STORAGE_KEY);
+
+                /**
+                 * We do not have to clear the application ID from sessionStorage because, user may
+                 * start a new chat session by manually clearing the chat session for the same applicationId.
+                 * *  
+                 * */ 
+
                 const keysToRemove = [];
                 for (let i = 0; i < localStorage.length; i++) {
                     const key = localStorage.key(i);
