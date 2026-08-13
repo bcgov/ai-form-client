@@ -2,7 +2,7 @@
 
     console.log('client.js loaded');
 
-    const clientId = 'f244ed8a-04da-41b0-bd83-fc18eead75b5';
+    const clientId = '44444444-3333-4333-8333-333333333333';
     const API_BACKEND_BASE_URL = 'https://nraif-671b-dev-commonservi-api.livelymushroom-b9ecaae0.canadacentral.azurecontainerapps.io';
 
     const CONVERSATION_HISTORY_API_URL = new URL(`/tenants/${clientId}/history`, API_BACKEND_BASE_URL).toString();
