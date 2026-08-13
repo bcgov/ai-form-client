@@ -1,11 +1,34 @@
+console.log('client.js loaded');
+
+import { fetchGuidedQuestions } from './guided-questions/services/guidedQuestionsService.js';
+import {
+    hasUsableAssistantReply,
+    loadAnsweredGuidedQuestionIds
+} from './guided-questions/utils/guidedQuestionStorage.js';
+import {
+    completePendingGuidedQuestion,
+    createPendingGuidedQuestion,
+    shouldRestorePendingGuidedQuestion
+} from './guided-questions/utils/guidedQuestionLifecycle.js';
+import { GUIDED_QUESTIONS_STYLES } from './guided-questions/styles/guidedQuestionsStyles.js';
+import { createGuidedQuestionsRenderer } from './guided-questions/ui/guidedQuestionsRenderer.js';
+
+/**
+ * Allow testing of alternative javascript
+ * if the browser's local storage has an item 'clientInstance': 'ms'
+ * javascript in remote file (see `url`) will be loaded instead
+ */
+let clientInstance = localStorage.getItem('clientInstance');
+
 (function () {
 
-    console.log('client.js loaded');
-
-    const clientId = '44444444-3333-4333-8333-333333333333';
+    // Feature flag: set to true to re-enable the guided questions UI when ready.
+    const GUIDED_QUESTIONS_ENABLED = false;
+    const clientId = 'f244ed8a-04da-41b0-bd83-fc18eead75b5';
     const API_BACKEND_BASE_URL = 'https://nraif-671b-dev-commonservi-api.livelymushroom-b9ecaae0.canadacentral.azurecontainerapps.io';
 
     const CONVERSATION_HISTORY_API_URL = new URL(`/tenants/${clientId}/history`, API_BACKEND_BASE_URL).toString();
+    // const GUIDED_QUESTIONS_API_URL = new URL(`/tenants/${clientId}/guided-questions`, API_BACKEND_BASE_URL).toString();
     // Derive ws/wss from the API backend URL so local http uses ws and deployed
     // https uses wss without maintaining a second host setting.
     const WEBSOCKET_BASE_URL = (() => {
@@ -14,12 +37,24 @@
         return url.toString();
     })();
 
-
     let socket = null;
     let socketOpenPromise = null;
     // Keep the chat UI request/response model aligned with the backend's serialized
     // shared websocket request handling.
     let requestInFlight = false;
+
+    let livestockPurposehtml = `<tr class="possegrid">
+                                <td class="possegrid" valign="middle" colspan="1" rowspan="1" style="text-align: left" nowrap=""><span id="PurposeEdit_100536361_100379172_173010900_sp" name="PurposeEdit_100536361_100379172_173010900_sp" class="possegrid" style="text-align: left"><a data-id="PurposeEdit_Livestock and Animal_200_m3/year_173010900" id="PurposeEdit_100536361_100379172_173010900" name="PurposeEdit_100536361_100379172_173010900" class="possegrid" tabindex="14" title="Edit" target="_self" href="javascript:PossePopup('PurposeEdit_100536361_100379172_173010900',
+                                        'editrelatedobject.aspx?PossePresentation=Default&amp;PosseObjectId=185527876&amp;SourceOfDiversion%3DGroundwater%26PostIssue11307%3DY',
+                                            685, 800, 'PurposeEdit_100536361_100379172_173010900')">Edit</a></span></td>
+                                <td class="possegrid" valign="middle" colspan="1" rowspan="1" style="text-align: left" nowrap=""><span id="PurposeUse_100536361_100379172_185527876_sp" name="PurposeUse_100536361_100379172_185527876_sp" class="possegrid" style="text-align: left">Livestock and Animal</span></td>
+                                <td class="possegrid" valign="middle" colspan="1" rowspan="1" style="text-align: left" nowrap=""><span id="Units_100536361_100379172_185527876_sp" name="Units_100536361_100379172_185527876_sp" class="possegrid" style="text-align: left">{water_usage} m<sup>3</sup>/year </span></td>
+                                <td class="possegrid" valign="middle" colspan="1" rowspan="1" style="text-align: left" nowrap=""><span id="ApplicationUnits_100536361_100379172_185527876_sp" name="ApplicationUnits_100536361_100379172_185527876_sp" class="possegrid" style="text-align: left"> </span></td>
+                                <td class="possegrid" valign="middle" colspan="1" rowspan="1" style="text-align: right" nowrap=""><span id="ApplicationFee_100536361_100379172_185527876_sp" name="ApplicationFee_100536361_100379172_185527876_sp" class="possegrid" style="text-align: right">$250.00</span></td>
+                                <td class="possegrid" valign="middle" colspan="1" rowspan="1" style="text-align: right" nowrap=""><span id="Delete_1_100536361_100379172_173010900_sp" name="Delete_1_100536361_100379172_173010900_sp" class="possegrid" style="text-align: right"><img src="images/btndel.gif?v=5797" width="23" height="20" id="Delete_1_100536361_100379172_173010900" name="Delete_1_100536361_100379172_173010900" class="possegrid" onclick="if (confirm('Are you sure you want to delete this?')) {PosseDelete('https://test.j200.gov.bc.ca/pub/delivery/vfcbc/Default.aspx?PossePresentation=Public&amp;PosseObjectId=173010563','173010900'); PosseSubmit();}" tabindex="3" title="Delete this line" alt="Delete" onmouseover="this.style.cursor='pointer'" onkeypress="if(event.keyCode=='13'){this.click();}"></span></td>
+                            </tr>`
+
+
 
     async function getConversationHistory(session_id = null) {
         const threadId = session_id || localStorage.getItem(THREAD_ID_STORAGE_KEY);
@@ -77,9 +112,28 @@
     }
     //-------------------------- Services Ends ---------------------------//
 
+    //-------------------------- Steppers Starts ---------------------------//
+    const FormSteps = {
+        step0: "step0"
+    };
+    //-------------------------- Steppers Ends ---------------------------//
+
+    function parseApplicationIdFromDOM() {
+        const el = document.querySelector("span.title");
+        if (!el) {
+            console.warn("Application ID not found in the DOM.");
+            // This is not a catastrophic error, so we will return null instead of throwing an error.
+            return null;
+        }
+        // We will retrieve the application ID from the text content of the span.title element, which is expected to be in the format "Water Licence Application (123456)".
+        const match = el.textContent.match(/\((\d+)\)/);
+        return match ? match[1] : null;
+    }
+
     const THREAD_ID_STORAGE_KEY = 'nrAiForm_threadId';
     const CHAT_HISTORY_STORAGE_PREFIX = 'nrAiForm_chatHistory';
     const CHAT_SCROLL_STORAGE_PREFIX = 'nrAiForm_chatScroll';
+    const APPLICATION_ID_STORAGE_PREFIX = 'nrAiForm_applicationId';
 
     function createFallbackThreadId() {
         const randomBytes = new Uint8Array(16);
@@ -112,6 +166,16 @@
         } catch (error) {
             console.error("Unable to save thread ID to localStorage and sessionStorage:", error);
         }
+    }
+
+    function saveApplicationIdtoSessionStorage() {
+        const applicationIdInDOM = 'chefs1-application1';
+        const applicationIdInSessionStorage = sessionStorage.getItem(APPLICATION_ID_STORAGE_PREFIX);
+        if (applicationIdInSessionStorage && applicationIdInSessionStorage === applicationIdInDOM) {
+            // If the application ID in sessionStorage matches the one in the DOM, we don't need to set it in the storage again.
+            return;
+        }
+        sessionStorage.setItem(APPLICATION_ID_STORAGE_PREFIX, applicationIdInDOM);
     }
 
     function getHistoryStorageKey(threadId) {
@@ -208,6 +272,205 @@
         return null;
     }
 
+    function normalizeStepLabelToStepValue(label) {
+        const raw = String(label || '').replace(/\u00a0/g, ' ').trim().toLowerCase();
+        if (!raw) return null;
+
+        const normalized = raw.replace(/[^a-z0-9]/g, '');
+        if (!normalized) return null;
+
+        let stepKey = normalized;
+        if (/^\d+/.test(stepKey)) {
+            stepKey = `step${stepKey}`;
+        }
+
+        return FormSteps[stepKey] || stepKey;
+    }
+
+    function getStep3SubstepFromPaneHeader() {
+        const paneHeaderText = getPreferredPaneHeaderText();
+        if (!paneHeaderText) return null;
+
+        const step3PaneHeaderMap = {
+            governmentandfirstnationfeeexemptionrequest:
+                FormSteps.STEP3_TECHNICAL_INFORMATION_FEE_EXEMPTION_REQUEST,
+            waterdiversion:
+                FormSteps.STEP3_TECHNICAL_INFORMATION_WATER_DIVERSION,
+            works: FormSteps.STEP3_TECHNICAL_INFORMATION_WORKS,
+            jointworks: FormSteps.STEP3_TECHNICAL_INFORMATION_JOINT_WORKS,
+            damreservoir: FormSteps.STEP3_TECHNICAL_INFORMATION_DAM_RESERVOIR,
+            landtenure:
+                FormSteps.STEP3_TECHNICAL_INFORMATION_LAND_TENURE_OPTION,
+            otherauthorizations:
+                FormSteps.STEP3_TECHNICAL_INFORMATION_OTHER_AUTHORIZATIONS,
+            // Add Well Popup
+            well: FormSteps.STEP3_TECHNICAL_INFORMATION_ADD_WELL,
+            // Add Surface Water Source Popup
+            surfacewatersource: FormSteps.STEP3_ADD_SURFACE_WATER_SOURCE,
+            projectinformation:
+                FormSteps.STEP3_TECHNICAL_INFORMATION_PROJECT_INFORMATION,
+            // On the main form window; Not to be confused with the popup.
+            sourceofwaterforapplication:
+                FormSteps.STEP3_TECHNICAL_INFORMATION_SOURCE_OF_WATER_FOR_APPLICATION,
+            // Step 3 Dam Reservoir Individual Contact
+            wslicdamresindivcontact:
+                FormSteps.STEP3_DAM_RESERVOIR_ADD_INDIVIDUAL,
+            // Address - Reused across multiple steps
+            address: FormSteps.SHARED_ADDRESS,
+            wslicdamresbuscontact:
+                FormSteps.STEP3_DAM_RESERVOIR_ADD_ORGANIZATION
+        };
+
+        return step3PaneHeaderMap[paneHeaderText] || null;
+    }
+
+
+    function getPreferredPaneHeaderText() {
+        const subHeader = document.querySelector('[data-id="subheadername"]');
+        const subHeaderText = normalizeComparableValue(subHeader?.textContent || '');
+        if (subHeaderText) return subHeaderText;
+
+        const stepHeader = document.querySelector('[data-id="stepheadername"]');
+        const stepHeaderText = normalizeComparableValue(stepHeader?.textContent || '');
+        if (stepHeaderText) return stepHeaderText;
+
+        return null;
+    }
+
+    function getCurrentFormStepFromPaneHeaders() {
+        const paneHeaderText = getPreferredPaneHeaderText();
+        if (!paneHeaderText) return null;
+
+        const paneHeaderStepMap = {
+            introduction: FormSteps.step1introduction,
+            eligibility: FormSteps.step2eligibility,
+            governmentandfirstnationfeeexemptionrequest:
+                FormSteps.STEP3_TECHNICAL_INFORMATION_FEE_EXEMPTION_REQUEST,
+            waterdiversion:
+                FormSteps.STEP3_TECHNICAL_INFORMATION_WATER_DIVERSION,
+            projectinformation:
+                FormSteps.STEP3_TECHNICAL_INFORMATION_PROJECT_INFORMATION,
+            projectinformationquestions:
+                FormSteps.STEP3_TECHNICAL_INFORMATION_PROJECT_INFORMATION_QUESTIONS,
+            addapurpose: FormSteps.STEP3_ADDPURPOSE_CONSOLIDATED,
+            step3works: FormSteps.STEP3_TECHNICAL_INFORMATION_WORKS,
+            step3soureofwater:
+                FormSteps.STEP3_TECHNICAL_INFORMATION_SOURCE_OF_WATER_FOR_APPLICATION,
+            surfacewatersource: FormSteps.STEP3_ADD_SURFACE_WATER_SOURCE,
+            vfsurfacewatersource: FormSteps.STEP3_ADD_SURFACE_WATER_SOURCE,
+            step3jointworks:
+                FormSteps.STEP3_TECHNICAL_INFORMATION_JOINT_WORKS,
+            step3damreservoir:
+                FormSteps.STEP3_TECHNICAL_INFORMATION_DAM_RESERVOIR,
+            // Step 3 Dam Reservoir Individual Contact
+            wslicdamresindivcontact:
+                FormSteps.STEP3_DAM_RESERVOIR_ADD_INDIVIDUAL,
+            // Address - Reused across multiple steps
+            address: FormSteps.SHARED_ADDRESS,
+            wslicdamresbuscontact:
+                FormSteps.STEP3_DAM_RESERVOIR_ADD_ORGANIZATION,
+            /**
+             * In the Add Well Popup, stepheadername is well and subheadername is waterworks.
+             * Hence, both these entries are mapped to the same step value.
+             *  */
+            well: FormSteps.STEP3_TECHNICAL_INFORMATION_ADD_WELL,
+            waterworks: FormSteps.STEP3_TECHNICAL_INFORMATION_ADD_WELL,
+            step3landtenure:
+                FormSteps.STEP3_TECHNICAL_INFORMATION_LAND_TENURE_OPTION,
+            step3otherauthorizations:
+                FormSteps.STEP3_TECHNICAL_INFORMATION_OTHER_AUTHORIZATIONS,
+            step4location: FormSteps.STEP4_LOCATION,
+            // Step 4 Location - Applicant's land details
+            vfapplandinfofromapp: FormSteps.STEP4_LOCATION_LAND_DETAILS,
+            // Step 4 Location - Other affected land details
+            vflandinfo: FormSteps.STEP4_LOCATION_OTHER_AFFECTED_LANDS,
+            step5documentupload: FormSteps.STEP5_DOCUMENT_UPLOAD,
+            documentupload: FormSteps.SHARED_SINGLE_FILE_UPLOAD,
+            multifileupload: FormSteps.SHARED_MULTIFILE_UPLOAD,
+            step6privacydeclaration: FormSteps.STEP6_PRIVACY_CONFIRMATION,
+            applicantinformation: FormSteps.STEP7_APPLICANT_INFORMATION,
+            step8review: FormSteps.STEP8_REVIEW,
+            referralinformation: FormSteps.STEP7_REFERRALS,
+            step9declarations: FormSteps.STEP9_DECLARATIONS,
+            step10declarations: FormSteps.STEP9_DECLARATIONS,
+            coapplicants: FormSteps.STEP7_CO_APPLICANTS,
+            signaturescoapp: FormSteps.STEP9_CO_APPLICANT_SIGNATURES,
+            myprofile: FormSteps.STEP7_APPLICANT_INFORMATION_MY_PROFILE,
+            otherapplicantvfappclient: FormSteps.STEP7_CO_APPLICANT_ADD_AN_INDIVIDUAL,
+            otherapplicantvfappbusiness: FormSteps.STEP7_CO_APPLICANT_ADD_A_BUSINESS_APPLICANT,
+            appladdress: FormSteps.SHARED_ADDRESS,
+            address: FormSteps.SHARED_ADDRESS,
+            composeemailforsignaturerequest: FormSteps.STEP9_CO_APPLICANT_COMPOSE_EMAIL,
+            complete: FormSteps.STEP10_COMPLETE,
+            pubsubmitteraddress: FormSteps.SHARED_ADDRESS,
+            step9signatures: FormSteps.STEP9_CO_APPLICANT_SIGNATURES,
+            editindividual: FormSteps.STEP7_CO_APPLICANT_ADD_AN_INDIVIDUAL,
+            editorganization: FormSteps.STEP7_CO_APPLICANT_ADD_A_BUSINESS_APPLICANT
+        };
+        return paneHeaderStepMap[paneHeaderText] || null;
+    }
+    // todo: remove after posse update. work around till the stepheadernam is added for multi file upload step
+    function hasMultiFileUploadWidget() {
+        return Boolean(
+            document.querySelector('#uploader .plupload_container') ||
+            document.querySelector('form[action*="UploadMulti.aspx"]')
+        );
+    }
+
+    function getCurrentFormStepFromDom() {
+        const progressBar = document.getElementById('progressbar');
+        if (!progressBar) {
+            const hasAltchaValidation = Boolean(
+                document.querySelector('span[id^="AltchaControl_"] script[src*="altcha.min.js"]')
+            );
+            const hasCaptchaIframeValidation = Boolean(
+                document.querySelector('span[id^="Captcha_"] iframe#lanbotiframe')
+            );
+            if (hasAltchaValidation || hasCaptchaIframeValidation) {
+                return FormSteps.step0bot || 'step0-Bot';
+            }
+            // todo: remove after posse update. work around till the stepheadernam is added for multi file upload step
+
+            if (hasMultiFileUploadWidget()) {
+                return FormSteps.SHARED_MULTIFILE_UPLOAD;
+            }
+            return getCurrentFormStepFromPaneHeaders();
+        }
+
+        const activeLi =
+            progressBar.querySelector('li.crumbs_on') ||
+            progressBar.querySelector('li.active') ||
+            progressBar.querySelector('li[aria-current="step"]');
+
+        if (!activeLi) {
+            const hasAltchaValidation = Boolean(
+                document.querySelector('span[id^="AltchaControl_"] script[src*="altcha.min.js"]')
+            );
+            const hasCaptchaIframeValidation = Boolean(
+                document.querySelector('span[id^="Captcha_"] iframe#lanbotiframe')
+            );
+            if (hasAltchaValidation || hasCaptchaIframeValidation) {
+                return FormSteps.step0bot || 'step0-Bot';
+            }
+            // todo: remove after posse update. work around till the stepheadernam is added for multi file upload step
+
+            if (hasMultiFileUploadWidget()) {
+                return FormSteps.SHARED_MULTIFILE_UPLOAD;
+            }
+            return getCurrentFormStepFromPaneHeaders();
+        }
+        const paneHeaderStep = getCurrentFormStepFromPaneHeaders();
+        if (paneHeaderStep) {
+            return paneHeaderStep;
+        }
+
+        const labelFromText = (activeLi.textContent || '').trim();
+        const labelFromTitle = (activeLi.getAttribute('title') || '').trim();
+        const currentStep = 'step0';
+
+        return currentStep;
+    }
+
     function normalizeComparableValue(value) {
         return String(value ?? '')
             .trim()
@@ -297,6 +560,29 @@
         if (byName.length > 0) return byName;
 
         return [];
+    }
+
+    function applyPurposeTableSuggestion(suggestion) {
+        if (String(suggestion.type || '').toLowerCase() !== 'grid' || suggestion.id !== 'Purpose_Table') {
+            return false;
+        }
+
+        const purposeTable = document.querySelector('[data-id="Purpose_Table"]');
+        if (!purposeTable) {
+            console.warn('Purpose_Table element was not found in the DOM.');
+            return false;
+        }
+
+        const waterUsage = String(suggestion.suggestedvalue ?? '').trim();
+        const renderedHtml = livestockPurposehtml.replace('{water_usage}', waterUsage);
+
+        const insertTarget =
+            purposeTable.tagName?.toLowerCase() === 'table'
+                ? purposeTable.tBodies[0] || purposeTable
+                : purposeTable;
+
+        insertTarget.insertAdjacentHTML('beforeend', renderedHtml);
+        return true;
     }
 
     function applySuggestionToElements(suggestion, elements) {
@@ -401,10 +687,40 @@
     }
 
     /** 
-     * Remove the suggestions key from sessionStorage entirely - used when the queue is fully processed.
+     * Remove the suggestions key from sessionStorage entirely � used when the queue is fully processed.
     */
     function clearPendingSuggestions() {
         sessionStorage.removeItem(PENDING_SUGGESTIONS_KEY);
+    }
+
+    /** 
+     * Flag to ensure we only register the ASP.NET endRequest hook once per page lifecycle.
+     * On a full postback reload this resets to false, so the hook is re-registered on the new page.
+    */
+    let _aspNetHooked = false;
+
+    /** 
+     * Register a listener on ASP.NET's PageRequestManager.endRequest event.
+     * This event fires after every PARTIAL postback (UpdatePanel refresh) when the DOM has been
+     * updated by the server response. We use it to continue applying suggestions after a partial refresh.
+     * If Sys (ASP.NET ScriptManager) is not ready yet, we retry in 500ms.
+    */
+    function ensureAspNetHook() {
+        if (_aspNetHooked) return;
+        try {
+            if (typeof Sys === 'undefined' || !Sys.WebForms) {
+                // ScriptManager not initialized yet � retry shortly
+                setTimeout(ensureAspNetHook, 500);
+                return;
+            }
+            Sys.WebForms.PageRequestManager.getInstance().add_endRequest(function () {
+                // After each partial postback, check if there are pending suggestions and resume.
+                // We wait for DOM to settle first because the UpdatePanel may still be re-rendering.
+                const pending = loadPendingSuggestions();
+                if (pending.length > 0) waitForDomSettle(null, applyNextPendingSuggestion);
+            });
+            _aspNetHooked = true;
+        } catch (e) { }
     }
 
     /** 
@@ -443,21 +759,21 @@
         var observer = null;
         try {
             observer = new MutationObserver(function () {
-                // DOM changed - reset the quiet timer, we're not settled yet
+                // DOM changed � reset the quiet timer, we're not settled yet
                 clearTimeout(quietTimer);
                 quietTimer = setTimeout(finish, quietMs);
             });
             // Watch the entire subtree for any kind of DOM change
             observer.observe(target, { childList: true, subtree: true, attributes: true, characterData: true });
         } catch (e) {
-            // MutationObserver not supported - proceed immediately
+            // MutationObserver not supported � proceed immediately
             callback();
             return;
         }
 
         // If the DOM is already quiet (no mutations happen at all), fire after quietMs
         quietTimer = setTimeout(finish, quietMs);
-        // Safety net - never wait longer than maxWaitMs regardless of ongoing mutations
+        // Safety net � never wait longer than maxWaitMs regardless of ongoing mutations
         giveUpTimer = setTimeout(finish, maxWaitMs);
     }
 
@@ -466,6 +782,7 @@
      * Clears any stale queue, saves the new suggestions, and starts applying them one by one.
     */
     function applyFormSupportSuggestionsFromResponse(response) {
+        ensureAspNetHook();
         const suggestions = parseFormSupportSuggestions(response);
         if (suggestions.length === 0) return;
         // Clear any leftover suggestions from a previous response before saving the new batch
@@ -493,20 +810,20 @@
         // Poll until the target element appears in the DOM.
         // After a full page reload, the script runs before ASP.NET has finished rendering all controls,
         // so the element may not exist in the DOM yet. We retry every 150ms for up to ~5 seconds.
-        const maxAttempts = 33; // 33 - 150ms - 5 seconds
+        const maxAttempts = 33; // 33 � 150ms � 5 seconds
         let attempts = 0;
 
         function tryApply() {
             const elements = findFieldElementsByIdentifier(suggestion.id);
             if (elements.length === 0 && attempts < maxAttempts) {
-                // Element not in DOM yet - wait and retry
+                // Element not in DOM yet � wait and retry
                 attempts++;
                 setTimeout(tryApply, 150);
                 return;
             }
 
             if (elements.length === 0) {
-                // Gave up waiting - element never appeared. Skip this field and move to the next.
+                // Gave up waiting � element never appeared. Skip this field and move to the next.
                 console.warn(`FormSupport: element not found after retries, skipping id=${suggestion.id}`);
                 savePendingSuggestions(remaining);
                 if (remaining.length > 0) setTimeout(applyNextPendingSuggestion, 100);
@@ -517,11 +834,11 @@
             // ASP.NET UpdatePanels can still be mid-render even after the element appears �
             // writing a value too early risks it being wiped when the panel finishes updating.
             waitForDomSettle(null, function () {
-                // Re-fetch the element after settling - UpdatePanel re-renders replace DOM nodes,
+                // Re-fetch the element after settling � UpdatePanel re-renders replace DOM nodes,
                 // so the reference we had before the settle may now point to a detached element.
                 const freshElements = findFieldElementsByIdentifier(suggestion.id);
                 if (freshElements.length === 0) {
-                    // Element was removed during the panel re-render - skip and continue
+                    // Element was removed during the panel re-render � skip and continue
                     console.warn(`FormSupport: element disappeared after DOM settle, skipping id=${suggestion.id}`);
                     savePendingSuggestions(remaining);
                     if (remaining.length > 0) setTimeout(applyNextPendingSuggestion, 100);
@@ -551,14 +868,14 @@
                 }
 
                 if (!triggersPostback) {
-                    // text/textarea - no postback expected, nudge next field after a short settle
+                    // text/textarea � no postback expected, nudge next field after a short settle
                     if (remaining.length > 0) {
                         waitForDomSettle(null, applyNextPendingSuggestion);
                     } else {
                         clearPendingSuggestions();
                     }
                 } else if (!_aspNetHooked) {
-                    // No PageRequestManager available - fixed delay fallback
+                    // No PageRequestManager available � fixed delay fallback
                     if (remaining.length > 0) setTimeout(applyNextPendingSuggestion, 900);
                     else setTimeout(clearPendingSuggestions, 900);
                 }
@@ -578,6 +895,8 @@
     function resumePendingSuggestions() {
         const pending = loadPendingSuggestions();
         if (pending.length === 0) return;
+        // Try to register the partial postback hook (Sys may now be available after full page load)
+        ensureAspNetHook();
         // Wait for the page DOM to fully settle before starting to apply fields
         waitForDomSettle(null, applyNextPendingSuggestion);
     }
@@ -768,6 +1087,8 @@
             align-items: center;
         }
 
+        ${GUIDED_QUESTIONS_STYLES}
+
         .wp-typing-dot {
             width: 8px;
             height: 8px;
@@ -910,6 +1231,7 @@
                     </div>
                 </div>
 
+                <div class="wp-chat-guided-questions" id="wp-chat-guided-questions" aria-live="polite"></div>
             </div>
 
             <div class="wp-chat-typing" id="wp-chat-typing">
@@ -937,10 +1259,22 @@
         const sendBtn = document.getElementById('wp-chat-send-btn');
         const chatMessages = document.getElementById('wp-chat-messages');
         const typingIndicator = document.getElementById('wp-chat-typing');
+        const guidedQuestionsContainer = document.getElementById('wp-chat-guided-questions');
 
         let sessionId = getStoredThreadId();
         let restoredScrollTop = loadChatScrollPosition(sessionId);
+        let guidedQuestionsRequestToken = 0;
+        let pendingGuidedQuestion = null;
+        const guidedQuestionsRenderer = createGuidedQuestionsRenderer({
+            guidedQuestionsContainer,
+            chatMessages,
+            onQuestionClick: handleGuidedQuestionClick
+        });
         saveThreadId(sessionId);
+        /** We need to save the application ID to sessionStorage at the time the assistant initializes because, 
+         * application ID is present in the DOM on the main window but absent in popups. 
+         * */
+        saveApplicationIdtoSessionStorage();
 
         const existingHistory = loadChatHistory(sessionId);
         if (existingHistory.length > 0) {
@@ -1000,6 +1334,8 @@
                 };
 
                 socket.onerror = function () {
+                    // If a request is already in flight, fail it immediately so the UI
+                    // can clear typing state and restore any pending guided question.
                     const error = new Error("WebSocket error connecting to API backend");
                     console.error("[WebSocket] Error occurred", error);
                     if (requestInFlight) {
@@ -1076,6 +1412,7 @@
             // Centralized failure cleanup for socket errors, gateway validation errors,
             // malformed responses, and unexpected connection closes.
             requestInFlight = false;
+            restorePendingGuidedQuestion();
             showTyping(false);
             appendMessage('system', "Sorry, I encountered an error connecting to the server.");
             console.error(error);
@@ -1097,7 +1434,18 @@
 
             // Convert the backend/orchestrator response into the assistant message array that
             // will be rendered in the chat, then use that same array to determine whether a
+            // clicked guided question was actually answered.
             const messages = extractAssistantMessages(response);
+            const hasAssistantReply = hasUsableAssistantReply(messages);
+            if (pendingGuidedQuestion && hasAssistantReply) {
+                // A prompt only becomes permanent once the assistant actually answered it.
+                pendingGuidedQuestion = completePendingGuidedQuestion(sessionId, pendingGuidedQuestion);
+            }
+            if (pendingGuidedQuestion && !hasAssistantReply) {
+                // If the request completed but did not return a usable answer, treat the prompt
+                // as unanswered and show it again for the current step.
+                restorePendingGuidedQuestion();
+            }
             // Finally render the assistant reply messages into the chat window.
             messages.forEach((msg) =>
                 appendMessage("assistant", msg, true, true),
@@ -1117,10 +1465,12 @@
                 // 1. show the modal,
                 // 2. hide the floating launcher button,
                 // 3. restore the last saved scroll position on the next paint,
+                // 4. refresh guided questions for the current step,
                 // 5. move keyboard focus into the input so the user can type immediately.
                 chatModal.classList.add('open');
                 chatButton.style.display = 'none';
                 requestAnimationFrame(restoreChatScrollPosition);
+                refreshGuidedQuestions();
                 chatInput.focus();
             } else {
                 chatModal.classList.remove('open');
@@ -1131,7 +1481,104 @@
         chatButton.addEventListener('click', toggleChat);
         closeBtn.addEventListener('click', toggleChat);
 
+        /**
+         * Handles the full "guided question clicked" path.
+         *
+         * What happens here:
+         * 1. Read the clicked question text and ids from the button dataset.
+         * 2. Build an in-memory pendingGuidedQuestion record for later success/failure handling.
+         * 3. Remove the clicked button immediately so the UI feels responsive.
+         * 4. Hide the guided-question container if that was the last visible prompt.
+         * 5. Send the clicked question through the normal chat send flow so it behaves exactly like
+         *    a user-typed message and goes through the same orchestrator/request path.
+         *
+         * Important: this does NOT persist the question as answered yet.
+         * We only mark it answered later after a usable assistant reply comes back.
+         */
+        function handleGuidedQuestionClick(button) {
+            if (!button || sendBtn.disabled) return;
+
+            const questionText = String(button.textContent || '').trim();
+            const questionId = String(button.dataset.questionId || '').trim();
+            const stepId = String(button.dataset.stepId || '').trim();
+            if (!questionText) return;
+
+            // Remove the clicked prompt immediately for responsive UX, but keep enough state to
+            // restore it if the request fails or comes back without an answer.
+            pendingGuidedQuestion = createPendingGuidedQuestion(questionId, stepId, questionText);
+            button.remove();
+            if (guidedQuestionsContainer.children.length === 0) {
+                guidedQuestionsRenderer.hideGuidedQuestions();
+            }
+
+            sendMessage(questionText);
+        }
+
+        /** Restores a clicked guided question when it was never successfully answered.
+        *
+        * This is used in two cases:
+        * 1. the request throws an error, or
+        * 2. the request completes but the assistant reply is empty/unusable.
+        *
+        * We clear the pending state first, then only refresh prompts if the user is still on the same
+        * step where the question was originally clicked. That prevents re-showing prompts from an older
+        * step after the user has already navigated elsewhere in the form.
+        */
+        function restorePendingGuidedQuestion() {
+            if (!pendingGuidedQuestion) return;
+            const pendingStepId = pendingGuidedQuestion.stepId;
+            pendingGuidedQuestion = null;
+
+            const currentStep = getCurrentFormStepFromDom();
+            // Only re-show the prompt if the user is still on the step where it was requested.
+            if (shouldRestorePendingGuidedQuestion({ stepId: pendingStepId }, currentStep)) {
+                refreshGuidedQuestions();
+            }
+        }
+
+        /** Load guided questions for the currently detected form step.
+        *
+        * What this does:
+        * 1. Detect the current step from the page DOM.
+        * 2. Read answered guided-question IDs for the current thread + step from localStorage.
+        * 3. Fetch the available questions for this step from the guided-question service.
+        * 4. Ignore stale async results if another refresh started after this one.
+        * 5. Filter out questions that were already successfully answered in this thread/step.
+        * 6. Render only the remaining visible questions into the chat window.
+        *
+        * Why requestToken exists:
+        * refreshGuidedQuestions() can be called multiple times in quick succession
+        * (for example on load, on chat open, or after restoring a failed prompt).
+        * If an older request finishes after a newer one, we discard that older result so it
+        * does not overwrite the most up-to-date guided-question list in the UI.
+        */
+        async function refreshGuidedQuestions() {
+            if (!GUIDED_QUESTIONS_ENABLED) return;
+
+            const stepId = getCurrentFormStepFromDom();
+            const requestToken = ++guidedQuestionsRequestToken;
+
+            try {
+                // Filter on the client as a final guard so answered prompts stay hidden after refresh.
+                const answeredQuestionIds = new Set(loadAnsweredGuidedQuestionIds(sessionId, stepId));
+                const guidedQuestions = await fetchGuidedQuestions(stepId, GUIDED_QUESTIONS_API_URL);
+
+                if (requestToken !== guidedQuestionsRequestToken) return;
+
+                const visibleQuestions = guidedQuestions
+                    .filter((question) => question && question.id && question.question)
+                    .filter((question) => !answeredQuestionIds.has(String(question.id)));
+
+                guidedQuestionsRenderer.renderGuidedQuestions(stepId, visibleQuestions);
+            } catch (error) {
+                if (requestToken !== guidedQuestionsRequestToken) return;
+                guidedQuestionsRenderer.hideGuidedQuestions();
+                console.error('Error fetching guided questions:', error);
+            }
+        }
+
         async function sendMessage(prefilledText = null) {
+            // sendMessage supports both user-typed text and auto-sent guided questions.
             // If prefilledText is passed in, use it as the outgoing message; otherwise
             // read the current value from the chat input.
             let text = typeof prefilledText === 'string' ? prefilledText.trim() : chatInput.value.trim();
@@ -1139,7 +1586,9 @@
 
             // Add the outgoing user message to the chat immediately so the UI updates
             // before the network request completes.
-            appendMessage('user', text, true, true);
+            // placeAfterGuidedQuestions keeps the just-clicked prompt visually below the
+            // suggestion list while the assistant reply is still loading.
+            appendMessage('user', text, true, true, { placeAfterGuidedQuestions: true });
             // Reset the input UI because the message is now in flight.
             chatInput.value = '';
             autoResizeChatInput();
@@ -1148,8 +1597,12 @@
             showTyping(true);
 
             try {
-                const currentStep = 'step0';
+                const currentStep = getCurrentFormStepFromDom();
                 console.log(`Invoking orchestrator with sessionId=${sessionId}, step=${currentStep}, query=${text}`);
+
+                if (currentStep === FormSteps.step0bot) {
+                    text = `Human verification form query : ${text}`;
+                }
 
                 // Always send through WebSocket. The legacy HTTP invoke fallback was
                 // removed so the frontend talks only to the API backend gateway.
@@ -1158,7 +1611,9 @@
 
             } catch (error) {
                 // Request-level failure:
+                // restore the clicked guided question because it was never successfully answered,
                 // reset the loading state, and show a generic system error in the chat.
+                restorePendingGuidedQuestion();
                 showTyping(false);
                 appendMessage('system', "Sorry, I encountered an error connecting to the server.");
                 console.error(error);
@@ -1197,8 +1652,29 @@
             bubble.innerHTML = formatMessage(String(text));
             msgDiv.appendChild(bubble);
 
-                chatMessages.appendChild(msgDiv);
+            // During the loading state for a clicked prompt, place the outgoing user message
+            // just below the visible guided-question list instead of moving the list below it.
+            const shouldPlaceAfterGuidedQuestions =
+                options.placeAfterGuidedQuestions &&
+                guidedQuestionsContainer &&
+                guidedQuestionsContainer.style.display !== 'none' &&
+                guidedQuestionsContainer.parentElement === chatMessages;
 
+            if (shouldPlaceAfterGuidedQuestions) {
+                if (guidedQuestionsContainer.nextSibling) {
+                    chatMessages.insertBefore(msgDiv, guidedQuestionsContainer.nextSibling);
+                } else {
+                    chatMessages.appendChild(msgDiv);
+                }
+            } else {
+                chatMessages.appendChild(msgDiv);
+            }
+
+            // For assistant/system messages, keep the guided-question block anchored at the end
+            // of the chat content so prompts remain at the bottom after the latest reply.
+            if (!shouldPlaceAfterGuidedQuestions && guidedQuestionsContainer && guidedQuestionsContainer.style.display !== 'none') {
+                chatMessages.appendChild(guidedQuestionsContainer);
+            }
             if (persist) {
                 appendChatHistory(sessionId, role, String(text));
             }
@@ -1247,7 +1723,7 @@
                 return `\x00PLAINURL${idx}\x00`;
             });
 
-            // Step 3: HTML-escape the remaining text (safe - placeholders use \x00 which won't be escaped)
+            // Step 3: HTML-escape the remaining text (safe � placeholders use \x00 which won't be escaped)
             let formatted = processed
                 .replace(/&/g, '&amp;')
                 .replace(/</g, '&lt;')
@@ -1308,21 +1784,25 @@
         });
 
         autoResizeChatInput();
+        refreshGuidedQuestions();
 
         // On every page load/reload (including after ASP.NET postbacks), resume any
         // pending suggestions that were saved to sessionStorage before the page refreshed.
         resumePendingSuggestions();
     }
 
-    if (!sessionStorage.getItem(THREAD_ID_STORAGE_KEY)) {
-        // This is a brand new session; Remove any localStorage items that 
-        // might be lingering from a previous session, and start fresh.
-        clearChatStorage();
-    }
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initBot);
-    } else {
-        initBot();
+    const isAIAssistantEnabled = true;
+    if (isAIAssistantEnabled) {
+        if (!sessionStorage.getItem(THREAD_ID_STORAGE_KEY)) {
+            // This is a brand new session; Remove any localStorage items that 
+            // might be lingering from a previous session, and start fresh.
+            clearChatStorage();
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initBot);
+        } else {
+            initBot();
+        }
     }
     // Clears chat-related storage from sessionStorage and localStorage.
     function clearChatStorage() {
@@ -1351,7 +1831,7 @@
         }
     }
 }
-)();
+);
 
 
 
