@@ -83,7 +83,7 @@ const clientId = '11111111-1111-4111-8111-111111111111';
 // DEV : const API_BACKEND_BASE_URL = 'https://nraif-671b-dev-api.icymushroom-bc5ec66d.canadacentral.azurecontainerapps.io';
 // LOCAL: const API_BACKEND_BASE_URL = 'http://localhost:8003';
 // dev
-const API_BACKEND_BASE_URL = 'https://nraif-671b-dev-commonservi-api.livelymushroom-b9ecaae0.canadacentral.azurecontainerapps.io';
+// const API_BACKEND_BASE_URL = 'https://nraif-671b-dev-commonservi-api.livelymushroom-b9ecaae0.canadacentral.azurecontainerapps.io';
 // test
 // const API_BACKEND_BASE_URL = 'https://nraif-671b-test-api.redground-c9aa9e63.canadacentral.azurecontainerapps.io'
 
@@ -654,6 +654,12 @@ function parseFormSupportSuggestions(response) {
             const parsedItems = Array.isArray(parsed) ? parsed : [parsed];
             parsedItems.forEach((parsedItem) => {
                 if (!parsedItem || !parsedItem.id) return;
+                // An empty suggestedvalue means "no suggestion" - the agent answered
+                // informationally rather than proposing a value for the field. Those
+                // entries are dropped here rather than downstream so they never reach
+                // the queue at all: no DOM polling, and no busy overlay raised over a
+                // response that was never going to change the form.
+                if (String(parsedItem.suggestedvalue ?? '').trim() === '') return;
                 suggestions.push({
                     id: parsedItem.id,
                     type: String(parsedItem.type || '').toLowerCase(),
