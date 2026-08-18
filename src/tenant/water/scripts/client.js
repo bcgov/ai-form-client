@@ -81,7 +81,7 @@ const GUIDED_QUESTIONS_ENABLED = false;
 const clientId = '11111111-1111-4111-8111-111111111111';
 // TEST: const API_BACKEND_BASE_URL = 'https://nraif-671b-test-api.ambitiousmeadow-949bd8c6.canadacentral.azurecontainerapps.io';
 // DEV : const API_BACKEND_BASE_URL = 'https://nraif-671b-dev-api.icymushroom-bc5ec66d.canadacentral.azurecontainerapps.io';
-// LOCAL: const API_BACKEND_BASE_URL = 'http://localhost:8003';
+// const API_BACKEND_BASE_URL = 'http://localhost:8003';
 // dev
 const API_BACKEND_BASE_URL = 'https://nraif-671b-dev-commonservi-api.livelymushroom-b9ecaae0.canadacentral.azurecontainerapps.io';
 // test
@@ -99,6 +99,14 @@ const WEBSOCKET_BASE_URL = (() => {
 
 let socket = null;
 let socketOpenPromise = null;
+// Reject handle for socketOpenPromise. Tearing a socket down has to settle its
+// pending open promise as well - a sendMessage() awaiting it would otherwise hang
+// forever, because the teardown drops the handlers that would have settled it.
+let socketOpenReject = null;
+// Bumped whenever the conversation is discarded (delete chat). A send that was
+// already under way compares the generation it started in against this one, so a
+// late reply or failure from the abandoned request cannot touch the fresh chat.
+let chatGeneration = 0;
 // Keep the chat UI request/response model aligned with the backend's serialized
 // shared websocket request handling.
 let requestInFlight = false;
@@ -1539,6 +1547,15 @@ ${buildDeleteChatDialogHtml()}
      * emptied chat should look like a freshly opened one.
      */
     function deleteChat() {
+        // A reply still in flight belongs to the thread being discarded, and
+        // initWebSocket() below drops the old socket's onmessage/onclose handlers -
+        // the only two paths that clear the loading state. Retire the request here or
+        // the typing dots animate forever, the input stays disabled, and every later
+        // send is refused by the "already in progress" guard until a page reload.
+        chatGeneration += 1;
+        requestInFlight = false;
+        showTyping(false);
+
         clearChatStorage();
         chatMessages.querySelectorAll('.wp-chat-message').forEach((message) => message.remove());
 
@@ -1590,6 +1607,7 @@ ${buildDeleteChatDialogHtml()}
         if (socket) {
             // Clear handlers before closing an older socket so its close/error event
             // does not affect the new connection or current chat request state.
+            socket.onopen = null;
             socket.onclose = null;
             socket.onerror = null;
             socket.onmessage = null;
@@ -1597,6 +1615,13 @@ ${buildDeleteChatDialogHtml()}
                 socket.close();
             } catch (error) {
                 console.warn("[WebSocket] Error closing existing connection", error);
+            }
+            // With those handlers gone nothing is left to settle the previous open
+            // promise, so settle it here. A send that landed mid-connect unblocks
+            // through its normal error path instead of awaiting a promise forever.
+            if (socketOpenReject) {
+                socketOpenReject(new Error("WebSocket replaced before it finished connecting."));
+                socketOpenReject = null;
             }
         }
 
@@ -1608,6 +1633,7 @@ ${buildDeleteChatDialogHtml()}
         // Store the open promise so sendMessage() can wait for CONNECTING sockets
         // instead of falling back to the removed legacy HTTP invoke path.
         socketOpenPromise = new Promise((resolve, reject) => {
+            socketOpenReject = reject;
             socket.onopen = function () {
                 console.log("[WebSocket] Connection established for session:", currentSessionId);
                 resolve(socket);
@@ -1624,6 +1650,11 @@ ${buildDeleteChatDialogHtml()}
                 reject(error);
             };
         });
+
+        // Mark the rejection as handled. Callers that need the outcome still await
+        // this promise through ensureWebSocketConnection() and still see the failure;
+        // this only stops an unawaited teardown from logging an unhandled rejection.
+        socketOpenPromise.catch(() => {});
 
         socket.onmessage = function (event) {
             // All assistant responses, session-init system messages, and gateway
@@ -1889,6 +1920,11 @@ ${buildDeleteChatDialogHtml()}
         // Show the loading state and temporarily disable interaction until the request finishes.
         showTyping(true);
 
+        // The conversation can be deleted while this send is still awaiting the
+        // socket, so anything past the await has to confirm it is still the current
+        // chat before touching shared request state or the message list.
+        const generation = chatGeneration;
+
         try {
             const currentStep = getCurrentFormStepFromDom();
             console.log(`Invoking orchestrator with sessionId=${sessionId}, step=${currentStep}, query=${text}`);
@@ -1900,9 +1936,17 @@ ${buildDeleteChatDialogHtml()}
             // Always send through WebSocket. The legacy HTTP invoke fallback was
             // removed so the frontend talks only to the API backend gateway.
             await ensureWebSocketConnection();
+            if (generation !== chatGeneration) return;
             invokeAPIWithWS(text, currentStep, sessionId);
 
         } catch (error) {
+            if (generation !== chatGeneration) {
+                // The chat this send belonged to was deleted mid-flight. Its failure is
+                // expected, and deleteChat() has already cleared the loading state, so
+                // this must not add an error bubble to the fresh conversation.
+                console.warn("[WebSocket] Discarded a request from a deleted chat", error);
+                return;
+            }
             // Request-level failure:
             // restore the clicked guided question because it was never successfully answered,
             // reset the loading state, and show a generic system error in the chat.
