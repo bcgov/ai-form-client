@@ -1,5 +1,5 @@
 const FormSteps = {
-    STEP0: "step0"
+    STEP1_INTRODUCTION: "step0",
 };
 
 export { FormSteps };
