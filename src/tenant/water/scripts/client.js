@@ -86,7 +86,6 @@ const API_BACKEND_BASE_URL = 'https://nraif-671b-dev-commonservi-api.livelymushr
 // const API_BACKEND_BASE_URL = 'https://nraif-671b-test-api.redground-c9aa9e63.canadacentral.azurecontainerapps.io'
 
 const CONVERSATION_HISTORY_API_URL = new URL(`/tenants/${clientId}/history`, API_BACKEND_BASE_URL).toString();
-const GUIDED_QUESTIONS_API_URL = new URL(`/tenants/${clientId}/guided-questions`, API_BACKEND_BASE_URL).toString();
 // Derive ws/wss from the API backend URL so local http uses ws and deployed
 // https uses wss without maintaining a second host setting.
 const WEBSOCKET_BASE_URL = (() => {
@@ -1868,7 +1867,7 @@ ${buildDeleteChatDialogHtml()}
         try {
             // Filter on the client as a final guard so answered prompts stay hidden after refresh.
             const answeredQuestionIds = new Set(loadAnsweredGuidedQuestionIds(sessionId, stepId));
-            const guidedQuestions = await fetchGuidedQuestions(stepId, GUIDED_QUESTIONS_API_URL);
+            const guidedQuestions = await fetchGuidedQuestions(stepId);
 
             if (requestToken !== guidedQuestionsRequestToken) return;
 

@@ -21,7 +21,7 @@ if (duplicateQuestionKeys.size > 0) {
     );
 }
 
-export async function fetchGuidedQuestions(stepId, guidedQuestionsApiUrl) {
+export async function fetchGuidedQuestions(stepId) {
     if (!stepId) return [];
     const questions = UNIQUE_GUIDED_QUESTIONS;
     return Array.isArray(questions)
