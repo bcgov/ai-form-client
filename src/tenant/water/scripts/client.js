@@ -76,8 +76,6 @@ else {
 
     (function () {
 
-// Feature flag: set to true to re-enable the guided questions UI when ready.
-const GUIDED_QUESTIONS_ENABLED = false;
 const clientId = '11111111-1111-4111-8111-111111111111';
 // TEST: const API_BACKEND_BASE_URL = 'https://nraif-671b-test-api.ambitiousmeadow-949bd8c6.canadacentral.azurecontainerapps.io';
 // DEV : const API_BACKEND_BASE_URL = 'https://nraif-671b-dev-api.icymushroom-bc5ec66d.canadacentral.azurecontainerapps.io';
@@ -88,7 +86,7 @@ const API_BACKEND_BASE_URL = 'https://nraif-671b-dev-commonservi-api.livelymushr
 // const API_BACKEND_BASE_URL = 'https://nraif-671b-test-api.redground-c9aa9e63.canadacentral.azurecontainerapps.io'
 
 const CONVERSATION_HISTORY_API_URL = new URL(`/tenants/${clientId}/history`, API_BACKEND_BASE_URL).toString();
-// const GUIDED_QUESTIONS_API_URL = new URL(`/tenants/${clientId}/guided-questions`, API_BACKEND_BASE_URL).toString();
+const GUIDED_QUESTIONS_API_URL = new URL(`/tenants/${clientId}/guided-questions`, API_BACKEND_BASE_URL).toString();
 // Derive ws/wss from the API backend URL so local http uses ws and deployed
 // https uses wss without maintaining a second host setting.
 const WEBSOCKET_BASE_URL = (() => {
@@ -1864,8 +1862,6 @@ ${buildDeleteChatDialogHtml()}
     * does not overwrite the most up-to-date guided-question list in the UI.
     */
     async function refreshGuidedQuestions() {
-        if (!GUIDED_QUESTIONS_ENABLED) return;
-
         const stepId = getCurrentFormStepFromDom();
         const requestToken = ++guidedQuestionsRequestToken;
 
