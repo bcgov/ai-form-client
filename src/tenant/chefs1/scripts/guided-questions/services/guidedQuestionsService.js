@@ -3,32 +3,17 @@ const MOCK_GUIDED_QUESTIONS = [
     {
         id: "1",
         question: "What is the purpose of this form?",
-        stepId: "step1-Introduction"
+        stepId: "step0"
     },
     {
         id: "2",
         question: "What is a water licence?",
-        stepId: "step1-Introduction"
+        stepId: "step0"
     },
     {
         id: "3",
         question: "Who needs a water licence?",
-        stepId: "step1-Introduction"
-    },
-    {
-        id: "4",
-        question: "what is this screen about?",
-        stepId: "step2-Eligibility"
-    },
-    {
-        id: "5",
-        question: "As a first nation, am I eligible?",
-        stepId: "step2-Eligibility"
-    },
-    {
-        id: "6",
-        question: "As a farm owner, am I eligible?",
-        stepId: "step2-Eligibility"
+        stepId: "step0"
     }
 ];
 
