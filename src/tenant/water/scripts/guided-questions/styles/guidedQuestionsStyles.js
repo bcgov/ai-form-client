@@ -3,7 +3,8 @@ export const GUIDED_QUESTIONS_STYLES = `
             display: none;
             width: 100%;
             max-width: 504px;
-            height: 128px;
+            min-height: 128px;
+            height: auto;
             box-sizing: border-box;
             flex-direction: column;
             align-items: flex-end;
@@ -11,6 +12,7 @@ export const GUIDED_QUESTIONS_STYLES = `
             padding: 8px 16px;
             background: #FFFFFF;
             border-radius: 0;
+            flex-shrink: 0;
             margin-top: auto;
         }
 
