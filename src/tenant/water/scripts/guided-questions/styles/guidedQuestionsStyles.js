@@ -3,7 +3,6 @@ export const GUIDED_QUESTIONS_STYLES = `
             display: none;
             width: 100%;
             max-width: 504px;
-            min-height: 128px;
             height: auto;
             box-sizing: border-box;
             flex-direction: column;
