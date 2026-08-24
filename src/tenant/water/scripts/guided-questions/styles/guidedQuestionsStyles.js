@@ -2,31 +2,38 @@ export const GUIDED_QUESTIONS_STYLES = `
         .wp-chat-guided-questions {
             display: none;
             width: 100%;
+            max-width: 504px;
+            height: 128px;
+            box-sizing: border-box;
             flex-direction: column;
             align-items: flex-end;
-            gap: 14px;
-            padding-top: 12px;
+            gap: 8px;
+            padding: 8px 16px;
+            background: #FFFFFF;
+            border-radius: 0;
             margin-top: auto;
         }
 
         .wp-chat-guided-question {
-            max-width: 85%;
-            border: 1px solid #e6e9ef;
-            border-radius: 8px;
-            background: #f8f9fb;
-            color: #4b5563;
-            font-size: 15px;
-            line-height: 1.35;
-            padding: 12px 16px;
+            display: flex;
+            max-width: 100%;
+            height: 32px;
+            box-sizing: border-box;
+            align-items: center;
+            border: 1px solid #F2F2F2;
+            border-radius: 4px;
+            background: #F7F8FA;
+            color: #474D53;
+            font-family: 'BCSans', sans-serif;
+            font-size: 14px;
+            font-weight: 400;
+            line-height: 24px;
+            padding: 4px 8px;
             cursor: pointer;
             text-align: left;
-            box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
-            transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
         }
 
         .wp-chat-guided-question:hover {
-            background: #f2f4f7;
-            border-color: #d8dee8;
-            box-shadow: 0 2px 4px rgba(16, 24, 40, 0.1);
+            background: #F2F2F2;
         }
 `;
