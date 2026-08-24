@@ -107,6 +107,8 @@ let chatGeneration = 0;
 // Keep the chat UI request/response model aligned with the backend's serialized
 // shared websocket request handling.
 let requestInFlight = false;
+const FORM_UPDATE_COMPLETE_EVENT = 'wp-form-update-complete';
+let formUpdateInProgress = false;
 
 let livestockPurposehtml = `<tr class="possegrid">
                                 <td class="possegrid" valign="middle" colspan="1" rowspan="1" style="text-align: left" nowrap=""><span id="PurposeEdit_100536361_100379172_173010900_sp" name="PurposeEdit_100536361_100379172_173010900_sp" class="possegrid" style="text-align: left"><a data-id="PurposeEdit_Livestock and Animal_200_m3/year_173010900" id="PurposeEdit_100536361_100379172_173010900" name="PurposeEdit_100536361_100379172_173010900" class="possegrid" tabindex="14" title="Edit" target="_self" href="javascript:PossePopup('PurposeEdit_100536361_100379172_173010900',
@@ -843,8 +845,13 @@ function loadPendingSuggestions() {
  * covered, which is the failure that would matter most.
  */
 function finishPendingSuggestions() {
+    const completedFormUpdate = formUpdateInProgress;
+    formUpdateInProgress = false;
     clearPendingSuggestions();
     hideFormOverlay();
+    if (completedFormUpdate) {
+        document.dispatchEvent(new CustomEvent(FORM_UPDATE_COMPLETE_EVENT));
+    }
 }
 
 function clearPendingSuggestions() {
@@ -949,6 +956,7 @@ function applyFormSupportSuggestionsFromResponse(response) {
     // Clear any leftover suggestions from a previous response before saving the new batch
     clearPendingSuggestions();
     savePendingSuggestions(suggestions);
+    formUpdateInProgress = true;
     applyNextPendingSuggestion();
 }
 
@@ -1063,6 +1071,7 @@ function applyNextPendingSuggestion() {
 function resumePendingSuggestions() {
     const pending = loadPendingSuggestions();
     if (pending.length === 0) return;
+    formUpdateInProgress = true;
     // Cover the form straight away rather than after the settle below: the work is
     // already in progress from the user's point of view, and the gap is where a
     // stray click would land on a field about to be written to.
@@ -1785,6 +1794,10 @@ ${buildDeleteChatDialogHtml()}
             chatLauncher.style.display = 'flex';
         }
     }
+
+    document.addEventListener(FORM_UPDATE_COMPLETE_EVENT, () => {
+        if (!chatModal.classList.contains('open')) toggleChat();
+    });
 
     chatButton.addEventListener('click', toggleChat);
     closeBtn.addEventListener('click', toggleChat);
