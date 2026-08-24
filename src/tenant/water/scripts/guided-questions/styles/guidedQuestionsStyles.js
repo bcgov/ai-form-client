@@ -14,26 +14,27 @@ export const GUIDED_QUESTIONS_STYLES = `
             margin-top: auto;
         }
 
-        .wp-chat-guided-question {
+        .wp-chat-modal .wp-chat-guided-question {
             display: flex;
             max-width: 100%;
-            height: 32px;
+            min-height: 32px;
+            height: auto;
             box-sizing: border-box;
             align-items: center;
-            border: 1px solid #F2F2F2;
-            border-radius: 4px;
-            background: #F7F8FA;
-            color: #474D53;
-            font-family: 'BCSans', sans-serif;
-            font-size: 14px;
-            font-weight: 400;
-            line-height: 24px;
-            padding: 4px 8px;
+            border: 1px solid #F2F2F2 !important;
+            border-radius: 4px !important;
+            background: #F7F8FA !important;
+            color: #474D53 !important;
+            font: 400 14px/24px 'BCSans', sans-serif !important;
             cursor: pointer;
+            flex-shrink: 0;
+            padding: 4px 8px !important;
             text-align: left;
+            white-space: normal;
+            overflow-wrap: anywhere;
         }
 
-        .wp-chat-guided-question:hover {
+        .wp-chat-modal .wp-chat-guided-question:hover {
             background: #F2F2F2;
         }
 `;
