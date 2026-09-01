@@ -361,6 +361,13 @@ function normalizeComparableValue(value) {
         .replace(/[^a-z0-9]/g, '');
 }
 
+function parseIsoDateLocal(value) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value ?? '').trim());
+    if (!match) return null;
+    const [, year, month, day] = match;
+    return new Date(Number(year), Number(month) - 1, Number(day));
+}
+
 function tryParseJson(value) {
     if (typeof value !== 'string') return value;
 
@@ -506,6 +513,33 @@ function applySuggestionToElements(suggestion, elements) {
         return false;
     }
     const checkboxElements = elements.filter((el) => el.type === 'checkbox');
+    if (type === 'selectboxes') {
+        // A selectboxes field (form.io's multi-checkbox group) renders one <input
+        // type="checkbox"> per option, and form.io applies the component's single
+        // data-id to every one of them - there is no distinct data-id per option.
+        // So, like radio, we resolve the whole group by that shared identifier and
+        // pick individual options by matching value/label instead of by element id.
+        if (checkboxElements.length === 0) return false;
+
+        const targetValues = String(suggestion.suggestedvalue ?? '')
+            .split(',')
+            .map((v) => normalizeComparableValue(v))
+            .filter(Boolean);
+        if (targetValues.length === 0) return false;
+
+        let matchedAny = false;
+        checkboxElements.forEach((el) => {
+            const byValue = normalizeComparableValue(el.value);
+            const byLabel = normalizeComparableValue(getAssociatedLabelText(el));
+            if (targetValues.includes(byValue) || targetValues.includes(byLabel)) {
+                el.checked = true;
+                el.dispatchEvent(new Event('click', { bubbles: true }));
+                el.dispatchEvent(new Event('change', { bubbles: true }));
+                matchedAny = true;
+            }
+        });
+        return matchedAny;
+    }
     if (type === 'checkbox' || checkboxElements.length > 0) {
         const truthyValues = ['y', 'yes', 'true', '1', 'on', 'checked'];
         const falsyValues = ['n', 'no', 'false', '0', 'off', 'unchecked'];
@@ -542,6 +576,18 @@ function applySuggestionToElements(suggestion, elements) {
             return true;
         }
         return false;
+    }
+
+    // form.io's Day/DateTime component wires flatpickr onto its own "input" ref
+    // element (the one carrying data-id) and hides it, generating a separate
+    // visible altInput with no data-id of its own. Setting .value + dispatching
+    // input/change on the hidden original input doesn't reach flatpickr's
+    // internal state or the visible altInput - flatpickr's own setDate API does.
+    if (first && first._flatpickr && typeof first._flatpickr.setDate === 'function') {
+        const parsedDate = parseIsoDateLocal(suggestion.suggestedvalue);
+        if (!parsedDate) return false;
+        first._flatpickr.setDate(parsedDate, true);
+        return true;
     }
 
     if (first.tagName && (first.tagName.toLowerCase() === 'input' || first.tagName.toLowerCase() === 'textarea')) {
@@ -771,7 +817,7 @@ function applyNextPendingSuggestion() {
             // it would also trigger a postback and wipe the value we just set. In that case, add 'string'
             // to this check or detect it from the DOM element's attributes. For standard forms this is
             // not an issue as TextBox/TextArea controls do not have AutoPostBack enabled by default.
-            const triggersPostback = suggestion.type === 'radio' || suggestion.type === 'checkbox' || suggestion.type === 'select';
+            const triggersPostback = suggestion.type === 'radio' || suggestion.type === 'checkbox' || suggestion.type === 'select' || suggestion.type === 'selectboxes';
 
             // Apply the suggestion value to the DOM element
             const applied = applySuggestionToElements(suggestion, freshElements);
