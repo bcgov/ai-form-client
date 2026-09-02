@@ -37,7 +37,7 @@ export const GUIDED_QUESTIONS = [
     {
         id: "8",
         question: "Help me with calculation.",
-        stepId: "step3-Technical-Information-Water-Diversion"
+        stepId: "step3-AddPurpose-Consolidated"
     },
     {
         id: "9",
