@@ -33,9 +33,18 @@ export const GUIDED_QUESTIONS_STYLES = `
             text-align: left;
             white-space: normal;
             overflow-wrap: anywhere;
+            transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
         }
 
-        .wp-chat-modal .wp-chat-guided-question:hover {
-            background: #F2F2F2;
+        .wp-chat-modal.wp-chat-modal-expanded .wp-chat-guided-questions {
+            max-width: none;
+        }
+
+        .wp-chat-modal .wp-chat-guided-question:hover,
+        .wp-chat-modal .wp-chat-guided-question:focus-visible {
+            background: #E6F0FA !important;
+            border-color: #2F6690 !important;
+            box-shadow: 0 0 0 2px rgba(47, 102, 144, 0.18);
+            outline: none;
         }
 `;
