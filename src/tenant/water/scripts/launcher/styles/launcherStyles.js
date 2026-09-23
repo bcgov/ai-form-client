@@ -19,15 +19,21 @@ export const LAUNCHER_STYLES = `
         }
 
         /* 2. Button -------------------------------------------------------------
-           Width hugs the label rather than being fixed: the design's 125px predates
-           the full product name, which does not fit in it at 16px bold. */
+           Width hugs the label rather than being fixed: 12px of padding either side
+           of "How can I help?" at 16px bold comes to the design's 150px on its own,
+           and a fixed width would clip the label wherever BC Sans is not available.
+           Height falls out the same way - 12 + 22 + 12 = the specified 46px.
+
+           The card is near-white rather than blue: it sits over the form all the way
+           down the page, and the shadow is what separates it, not a block of colour. */
         .wp-chat-button {
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 12px 16px;
-            background: #00528D;
-            color: #FFFFFF;
+            gap: 4px;
+            padding: 12px;
+            background: #FAF9F8;
+            color: #013366;
             border: none;
             border-radius: 12px;
             font-family: inherit;
@@ -43,28 +49,29 @@ export const LAUNCHER_STYLES = `
         }
 
         .wp-chat-button:hover {
-            background: #3470B1;
+            background: #EDEBE9;
         }
 
         /* Focus is called out separately from hover: keyboard users need the same
-           "this is interactive" signal that pointer users get. */
+           "this is interactive" signal that pointer users get. The ring is drawn
+           inside the button, in the label's own blue - on a near-white card an
+           outward ring would read as a second border against the page. */
         .wp-chat-button:focus-visible {
-            outline: 3px solid #FFFFFF;
-            outline-offset: -6px;
-            background: #3470B1;
+            outline: 2px solid #013366;
+            outline-offset: -4px;
+            background: #EDEBE9;
         }
 
         /* Notice marker ---------------------------------------------------------
            Inline beside the label rather than absolutely positioned in the corner:
            the button's width hugs its text, so a corner badge would sit half outside
-           the rounded edge and clip. Raised by align-self instead of by superscript
-           so it cannot alter the button's line height.
+           the rounded edge and clip. Spaced by the button's own 4px gap, and raised by
+           align-self instead of by superscript so it cannot alter the line height.
 
            aria-hidden in the markup, because the asterisk is not information on its
            own - the message it marks is announced by the tooltip's role="status". */
         .wp-chat-launcher-badge {
             align-self: flex-start;
-            margin-left: 4px;
             color: #CE3E39;
             font-size: 18px;
             font-weight: 700;
@@ -107,7 +114,10 @@ export const LAUNCHER_STYLES = `
         }
 
         .wp-chat-launcher-tooltip-body {
-            padding: 8px 12px;
+            position: relative;
+            /* Room on the right for the dismiss button, which is lifted out of the
+               flow so it cannot push the message into a second line. */
+            padding: 8px 36px 8px 12px;
             background: #FFFFFF;
             border-radius: 2px;
             color: #313132;
@@ -117,6 +127,55 @@ export const LAUNCHER_STYLES = `
             line-height: 22px;
             text-align: left;
             box-sizing: border-box;
+        }
+
+        /* Dismiss ---------------------------------------------------------------
+           The only part of the bubble that takes the pointer. The bubble itself is
+           pointer-events: none so it can never block the form it overlaps, and that
+           has to keep being true of everything except this 24px square. */
+        .wp-chat-launcher-tooltip-dismiss {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            padding: 0;
+            background: none;
+            border: none;
+            border-radius: 50%;
+            color: #6B655D;
+            cursor: pointer;
+            pointer-events: auto;
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+
+        .wp-chat-launcher-tooltip-dismiss:hover {
+            background: rgba(45, 42, 38, 0.08);
+            color: #2D2A26;
+        }
+
+        .wp-chat-launcher-tooltip-dismiss:focus-visible {
+            outline: 2px solid #003366;
+            outline-offset: 1px;
+        }
+
+        .wp-chat-launcher-tooltip-dismiss-icon {
+            width: 14px;
+            height: 14px;
+            fill: currentColor;
+        }
+
+        /* Withheld from a bubble that is only being borrowed.
+           The rule above brings the message back under the pointer after its showing
+           is over; there is nothing to dismiss about a bubble that already leaves the
+           moment the pointer does, and offering to close it would suggest the closing
+           meant something. Keeping it out of the rendering also keeps it out of the
+           tab order, so it cannot be reached when it cannot be seen. */
+        .wp-chat-launcher-tooltip[hidden] .wp-chat-launcher-tooltip-dismiss {
+            display: none;
         }
 
         /* The beak is a rotated square whose top half is covered by the body above
