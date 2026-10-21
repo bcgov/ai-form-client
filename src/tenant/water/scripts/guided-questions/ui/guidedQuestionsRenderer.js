@@ -28,16 +28,10 @@ export function createGuidedQuestionsRenderer({
 
         guidedQuestionsContainer.innerHTML = '';
 
-        [...questions]
-            .sort((firstQuestion, secondQuestion) => {
-                const firstLength = String(firstQuestion?.question || '').length;
-                const secondLength = String(secondQuestion?.question || '').length;
-                return secondLength - firstLength;
-            })
-            .forEach((question) => {
-                if (!question || !question.id || !question.question) return;
-                guidedQuestionsContainer.appendChild(createGuidedQuestionButton(question));
-            });
+        questions.forEach((question) => {
+            if (!question || !question.id || !question.question) return;
+            guidedQuestionsContainer.appendChild(createGuidedQuestionButton(question));
+        });
 
         if (guidedQuestionsContainer.children.length === 0) {
             hideGuidedQuestions();

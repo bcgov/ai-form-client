@@ -11,7 +11,7 @@
                 "In the Stream Channel",
                 "Off the Stream Channel"
             ],
-            "default": "",
+            "default": "Off the Stream Channel",
             "required": false
         },
         "WSLICDugoutStorageCapacity": {
